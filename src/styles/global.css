@@ -1,0 +1,63 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Lenis (scroll suave) — desativa o smooth do CSS quando o Lenis está ativo */
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+/* Orbs de gradiente no fundo (tira a escuridão chapada) */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(45vw 45vw at 12% 14%, rgba(232, 23, 138, 0.18), transparent 60%),
+    radial-gradient(50vw 50vw at 88% 28%, rgba(79, 195, 247, 0.14), transparent 60%),
+    radial-gradient(55vw 55vw at 50% 64%, rgba(123, 53, 192, 0.2), transparent 62%),
+    radial-gradient(45vw 45vw at 20% 92%, rgba(232, 23, 138, 0.12), transparent 60%);
+}
+
+/* Seções translúcidas pra os orbs brilharem através (exceto a hero, que tem vídeo) */
+main section:not(#top),
+footer {
+  background: rgba(13, 10, 26, 0.66) !important;
+}
+
+body {
+  background: var(--c-bg);
+  color: var(--c-near-white);
+  font-family: var(--font-body);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img,
+video {
+  display: block;
+  max-width: 100%;
+}
+
+::selection {
+  background: var(--c-magenta);
+  color: #fff;
+}

@@ -1,0 +1,28 @@
+/* Tokens da marca — extraídos de elcio_barber_brand_kit.html */
+:root {
+  /* Paleta */
+  --c-magenta: #e8178a; /* primária */
+  --c-purple: #7b35c0; /* secundária */
+  --c-blue: #4fc3f7; /* terciária */
+  --c-deep-violet: #2d1b4e; /* texto / dark */
+  --c-bg: #0d0a1a; /* background quase-preto roxo */
+  --c-bg-2: #1a0e2e;
+  --c-soft-violet: #9b6fd4; /* hover / suave */
+  --c-near-white: #f0eaf8; /* texto claro */
+  --c-mid-purple: #4a2080; /* borda / linha */
+
+  /* Gradientes */
+  --grad-signature: linear-gradient(135deg, #e8178a 0%, #7b35c0 50%, #4fc3f7 100%);
+  --grad-dark: linear-gradient(135deg, #2d1b4e, #4a2080, #7b35c0);
+  --grad-accent: linear-gradient(135deg, #e8178a, #c0198f, #9b2ba8);
+  --grad-bg: linear-gradient(135deg, #0d0a1a, #1a0e2e);
+
+  /* Tipografia */
+  --font-display: "Cinzel Decorative", serif;
+  --font-heading: "Cinzel", serif;
+  --font-body: "Raleway", sans-serif;
+
+  /* Layout */
+  --maxw: 1200px;
+  --radius: 12px;
+}

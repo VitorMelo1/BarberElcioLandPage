@@ -1,0 +1,112 @@
+.section {
+  position: relative;
+  z-index: 2;
+  background: var(--c-bg);
+  padding: clamp(4rem, 10vh, 7rem) 1.5rem;
+}
+.container {
+  max-width: var(--maxw);
+  margin: 0 auto;
+}
+.kicker {
+  font-family: var(--font-heading);
+  font-size: 0.72rem;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--c-soft-violet);
+}
+.title {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  line-height: 1.05;
+  margin-top: 0.5rem;
+  background: var(--grad-signature);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.lead {
+  color: rgba(240, 234, 248, 0.6);
+  max-width: 56ch;
+  margin-top: 1rem;
+  line-height: 1.7;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.2rem;
+  margin-top: 2.5rem;
+}
+.card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius);
+  padding: 1.6rem;
+  transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s;
+}
+.card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(232, 23, 138, 0.4);
+  box-shadow: 0 18px 50px -20px rgba(232, 23, 138, 0.5);
+}
+.tag {
+  display: inline-block;
+  font-family: var(--font-heading);
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--c-blue);
+  border: 1px solid rgba(79, 195, 247, 0.3);
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+}
+.cardTitle {
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  color: #fff;
+  margin-top: 1rem;
+  letter-spacing: 0.03em;
+}
+.cardDesc {
+  color: rgba(240, 234, 248, 0.6);
+  margin-top: 0.5rem;
+  line-height: 1.6;
+  font-size: 0.92rem;
+}
+.priceWrap {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 2rem 3rem;
+  margin-top: 3.5rem;
+  padding-top: 2.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.priceGroupTitle {
+  font-family: var(--font-heading);
+  font-size: 0.8rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--c-soft-violet);
+  margin-bottom: 1rem;
+}
+.priceList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+.priceRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.95rem;
+  color: rgba(240, 234, 248, 0.8);
+  padding-bottom: 0.7rem;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.07);
+}
+.price {
+  color: #fff;
+  font-weight: 600;
+  white-space: nowrap;
+}

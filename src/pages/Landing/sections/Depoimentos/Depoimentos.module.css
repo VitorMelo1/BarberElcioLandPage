@@ -1,0 +1,77 @@
+.section {
+  position: relative;
+  z-index: 2;
+  background: var(--c-bg);
+  padding: clamp(4rem, 10vh, 7rem) 1.5rem;
+}
+.container {
+  max-width: var(--maxw);
+  margin: 0 auto;
+}
+.kicker {
+  font-family: var(--font-heading);
+  font-size: 0.72rem;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--c-soft-violet);
+}
+.title {
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  margin-top: 0.5rem;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.2rem;
+  margin-top: 2.5rem;
+}
+.card {
+  position: relative;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 2rem 1.6rem 1.6rem;
+  overflow: hidden;
+}
+.quote {
+  position: absolute;
+  top: -0.6rem;
+  left: 0.8rem;
+  font-family: var(--font-display);
+  font-size: 4rem;
+  line-height: 1;
+  background: var(--grad-signature);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  opacity: 0.5;
+}
+.text {
+  position: relative;
+  color: rgba(240, 234, 248, 0.85);
+  line-height: 1.7;
+  font-size: 0.98rem;
+}
+.meta {
+  margin-top: 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+.name {
+  font-family: var(--font-heading);
+  letter-spacing: 0.06em;
+  color: #fff;
+  font-size: 0.9rem;
+}
+.tag {
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--c-blue);
+  border: 1px solid rgba(79, 195, 247, 0.3);
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+  white-space: nowrap;
+}

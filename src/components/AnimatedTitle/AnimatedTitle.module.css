@@ -1,0 +1,36 @@
+.title {
+  perspective: 1000px;
+  font-family: var(--font-display);
+  font-weight: 900;
+  line-height: 1.02;
+}
+.line {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 0.4ch;
+}
+.left .line {
+  justify-content: flex-start;
+}
+.word {
+  display: inline-block;
+  opacity: 0;
+  transform: translate3d(0, 0, 0) rotateY(60deg) rotateX(-40deg);
+  transform-origin: 50% 50% -150px;
+  will-change: opacity, transform;
+  background: var(--grad-signature);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.word b {
+  -webkit-text-fill-color: var(--c-magenta);
+  color: var(--c-magenta);
+}
+@media (prefers-reduced-motion: reduce) {
+  .word {
+    opacity: 1;
+    transform: none;
+  }
+}
