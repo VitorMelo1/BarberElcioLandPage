@@ -1,7 +1,16 @@
+import { BookingModal } from "./components/BookingModal/BookingModal";
+import { AuthProvider } from "./context/AuthContext";
+import { BookingProvider } from "./context/BookingContext";
 import { Landing } from "./pages/Landing/Landing";
 
-/** Entrypoint. Por ora só a Landing; quando houver rotas (login/admin da fase 2),
- *  entra o React Router aqui. */
+/** Entrypoint: providers de auth/agendamento + a landing + o modal de agendamento. */
 export default function App() {
-  return <Landing />;
+  return (
+    <AuthProvider>
+      <BookingProvider>
+        <Landing />
+        <BookingModal />
+      </BookingProvider>
+    </AuthProvider>
+  );
 }

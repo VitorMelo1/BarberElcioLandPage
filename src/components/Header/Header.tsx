@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useBooking } from "../../context/BookingContext";
 import styles from "./Header.module.css";
 
 const LINKS = [
@@ -11,6 +12,7 @@ const LINKS = [
 export function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+  const { openBooking } = useBooking();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -50,7 +52,7 @@ export function Header() {
         </nav>
 
         <div className={styles.right}>
-          <button type="button" className={styles.cta} onClick={() => go("agendamento")}>
+          <button type="button" className={styles.cta} onClick={openBooking}>
             Agendar
           </button>
           <button
@@ -73,7 +75,14 @@ export function Header() {
             {l.label}
           </button>
         ))}
-        <button type="button" className={styles.panelCta} onClick={() => go("agendamento")}>
+        <button
+          type="button"
+          className={styles.panelCta}
+          onClick={() => {
+            openBooking();
+            setOpen(false);
+          }}
+        >
           Agendar
         </button>
       </div>
