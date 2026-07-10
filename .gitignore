@@ -8,7 +8,8 @@ dist-ssr
 .env.local
 .env.*.local
 
-# These Vite files contain only same-origin public API paths.
+# These Vite files contain only public API paths for each runtime mode.
 !.env.example
 !.env.development
 !.env.production
+!.env.test
