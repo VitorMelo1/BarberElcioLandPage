@@ -1,8 +1,14 @@
 node_modules
 dist
 dist-ssr
-*.local
 .DS_Store
+
+# Local environment overrides stay off Git.
 .env
-.env.*
+.env.local
+.env.*.local
+
+# These Vite files contain only same-origin public API paths.
 !.env.example
+!.env.development
+!.env.production
