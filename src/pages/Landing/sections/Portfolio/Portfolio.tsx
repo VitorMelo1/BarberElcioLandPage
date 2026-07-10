@@ -1,7 +1,29 @@
+import { useEffect, useState } from "react";
+
 import styles from "./Portfolio.module.css";
 import { gallery } from "../../../../data/gallery";
+import { getPortfolioImages, type ApiPortfolioImage } from "../../../../services/catalogService";
 
 export function Portfolio() {
+  const [apiGallery, setApiGallery] = useState<ApiPortfolioImage[]>([]);
+
+  useEffect(() => {
+    getPortfolioImages()
+      .then((items) => setApiGallery(items))
+      .catch(() => setApiGallery([]));
+  }, []);
+
+  const visibleGallery =
+    apiGallery.length > 0
+      ? apiGallery.map((item) => ({
+          id: String(item.id),
+          src: item.image_url || item.image,
+          alt: item.alt,
+          look: item.look,
+          mandala: item.mandala,
+        }))
+      : gallery;
+
   return (
     <section id="portfolio" className={styles.section}>
       <div className={styles.container}>
@@ -13,7 +35,7 @@ export function Portfolio() {
         </p>
 
         <div className={styles.masonry}>
-          {gallery.map((item) => (
+          {visibleGallery.map((item) => (
             <figure key={item.id} className={styles.item}>
               <img src={item.src} alt={item.alt} loading="lazy" className={styles.img} />
               <figcaption className={styles.caption}>

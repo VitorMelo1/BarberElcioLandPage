@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 import styles from "./Footer.module.css";
 
 export function Footer() {
@@ -33,7 +35,13 @@ export function Footer() {
             </a>
           </div>
         </div>
-        <div className={styles.bottom}>© 2026 Studio do Bruxo dos Cabelos · Elcio Barber</div>
+        <div className={styles.bottom}>
+          <span>© 2026 Studio do Bruxo dos Cabelos · Elcio Barber</span>
+          <span className={styles.legal}>
+            <Link to="/privacidade">Privacidade</Link>
+            <Link to="/termos">Termos</Link>
+          </span>
+        </div>
       </div>
     </footer>
   );

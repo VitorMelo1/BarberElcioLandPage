@@ -1,4 +1,4 @@
-import { api, clearTokens, setTokens } from "./api";
+import { api } from "./api";
 
 export interface RegisterData {
   username: string;
@@ -17,11 +17,11 @@ export interface MeUser {
 }
 
 export async function login(username: string, password: string) {
-  const data = await api<{ access: string; refresh: string }>("/auth/token/", {
+  const data = await api<{ user: MeUser }>("/auth/login/", {
     method: "POST",
     body: { username, password },
   });
-  setTokens(data.access, data.refresh);
+  return data.user;
 }
 
 export function register(data: RegisterData) {
@@ -29,9 +29,9 @@ export function register(data: RegisterData) {
 }
 
 export function getMe() {
-  return api<MeUser>("/auth/me/", { auth: true });
+  return api<MeUser>("/auth/me/");
 }
 
 export function logout() {
-  clearTokens();
+  return api<null>("/auth/logout/", { method: "POST" });
 }

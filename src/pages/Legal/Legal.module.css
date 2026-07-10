@@ -1,0 +1,85 @@
+.page {
+  position: relative;
+  z-index: 1;
+  min-height: 100dvh;
+  background: var(--c-bg);
+  padding: 3rem 1.4rem 4rem;
+}
+.wrap {
+  max-width: 720px;
+  margin: 0 auto;
+}
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: rgba(240, 234, 248, 0.5);
+  font-size: 0.85rem;
+  transition: color 0.2s;
+}
+.back:hover {
+  color: #fff;
+}
+.emblem {
+  display: block;
+  height: 56px;
+  width: auto;
+  margin: 1.6rem 0 1rem;
+  filter: drop-shadow(0 8px 24px rgba(123, 53, 192, 0.55));
+}
+.title {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(1.8rem, 5vw, 2.6rem);
+  line-height: 1.1;
+  background: var(--grad-signature);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.updated {
+  color: rgba(240, 234, 248, 0.45);
+  font-size: 0.82rem;
+  margin-top: 0.5rem;
+}
+.content {
+  margin-top: 2rem;
+  color: rgba(240, 234, 248, 0.78);
+  font-size: 0.96rem;
+  line-height: 1.7;
+}
+.content h2 {
+  font-family: var(--font-heading);
+  color: #fff;
+  font-size: 1.15rem;
+  margin: 2rem 0 0.7rem;
+}
+.content p {
+  margin-bottom: 1rem;
+}
+.content b {
+  color: #fff;
+}
+.content ul {
+  margin: 0 0 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.content li {
+  padding-left: 0.3rem;
+}
+.content a {
+  color: var(--c-blue);
+  text-decoration: underline;
+}
+.foot {
+  margin-top: 3rem;
+  padding-top: 1.4rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(240, 234, 248, 0.5);
+  font-size: 0.85rem;
+}
+.foot a {
+  color: var(--c-soft-violet);
+}

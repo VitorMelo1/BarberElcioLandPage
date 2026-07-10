@@ -1,8 +1,8 @@
-import { useBooking } from "../../../../context/BookingContext";
+import { useNavigate } from "react-router-dom";
 import styles from "./Agendamento.module.css";
 
 export function Agendamento() {
-  const { openBooking } = useBooking();
+  const navigate = useNavigate();
 
   return (
     <section id="agendamento" className={styles.section}>
@@ -13,7 +13,7 @@ export function Agendamento() {
           Agende direto pelo site: escolha o serviço, veja os horários livres e confirme. O sinal de
           50% você combina com o Elcio.
         </p>
-        <button className={styles.cta} onClick={openBooking}>
+        <button className={styles.cta} onClick={() => navigate("/app")}>
           Agendar online
         </button>
         <a

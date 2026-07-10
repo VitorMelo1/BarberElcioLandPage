@@ -1,0 +1,40 @@
+.splash {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  background: var(--c-bg);
+  position: relative;
+  z-index: 1; /* cobre os orbs globais — splash limpo */
+}
+.emblem {
+  width: 84px;
+  height: auto;
+  filter: drop-shadow(0 10px 30px rgba(123, 53, 192, 0.6));
+  animation: pulse 1.6s ease-in-out infinite;
+}
+.text {
+  font-family: var(--font-heading);
+  font-size: 0.78rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(240, 234, 248, 0.55);
+}
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.07);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .emblem {
+    animation: none;
+  }
+}

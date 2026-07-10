@@ -12,6 +12,11 @@ export interface Booking {
   end: string;
   status: string;
   total_price: string;
+  client?: number;
+  client_username?: string;
+  client_phone?: string;
+  cancel_reason?: string;
+  can_client_change?: boolean;
 }
 
 export const getSlots = (date: string, serviceIds: number[]) =>
@@ -20,8 +25,13 @@ export const getSlots = (date: string, serviceIds: number[]) =>
 export const createBooking = (service_ids: number[], start: string) =>
   api<Booking>("/scheduling/bookings/create/", {
     method: "POST",
-    auth: true,
     body: { service_ids, start },
   });
 
-export const getMyBookings = () => api<Booking[]>("/scheduling/bookings/", { auth: true });
+export const getMyBookings = () => api<Booking[]>("/scheduling/bookings/");
+
+export const cancelMyBooking = (id: number, reason = "") =>
+  api<Booking>(`/scheduling/bookings/${id}/cancel/`, {
+    method: "POST",
+    body: { reason },
+  });

@@ -1,7 +1,42 @@
+import { useEffect, useState } from "react";
+
 import styles from "./Planos.module.css";
 import { plans, buildYourPlan } from "../../../../data/plans";
+import {
+  getDiscountTiers,
+  getPlans,
+  type ApiDiscountTier,
+  type ApiPlan,
+} from "../../../../services/catalogService";
 
 export function Planos() {
+  const [apiPlans, setApiPlans] = useState<ApiPlan[]>([]);
+  const [apiTiers, setApiTiers] = useState<ApiDiscountTier[]>([]);
+
+  useEffect(() => {
+    getPlans()
+      .then((items) => setApiPlans(items))
+      .catch(() => setApiPlans([]));
+    getDiscountTiers()
+      .then((items) => setApiTiers(items))
+      .catch(() => setApiTiers([]));
+  }, []);
+
+  const visiblePlans =
+    apiPlans.length > 0
+      ? apiPlans.map((plan) => ({
+          id: String(plan.id),
+          name: plan.name,
+          items: plan.items,
+          from: Number(plan.price_from),
+          price: Number(plan.price),
+        }))
+      : plans;
+  const visibleTiers =
+    apiTiers.length > 0
+      ? apiTiers.map((tier) => ({ range: tier.range_label, discount: tier.discount_label }))
+      : buildYourPlan;
+
   return (
     <section id="planos" className={styles.section}>
       <div className={styles.container}>
@@ -14,7 +49,7 @@ export function Planos() {
 
         <div className={styles.tiers}>
           <span className={styles.tiersLabel}>Monte seu plano:</span>
-          {buildYourPlan.map((t) => (
+          {visibleTiers.map((t) => (
             <span key={t.range} className={styles.tier}>
               <b>{t.discount}</b> {t.range}
             </span>
@@ -22,7 +57,7 @@ export function Planos() {
         </div>
 
         <div className={styles.grid}>
-          {plans.map((p) => (
+          {visiblePlans.map((p) => (
             <article key={p.id} className={styles.card}>
               <h3 className={styles.planName}>{p.name}</h3>
               <p className={styles.items}>{p.items}</p>

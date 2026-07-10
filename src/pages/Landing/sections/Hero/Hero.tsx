@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useNavigate } from "react-router-dom";
 import styles from "./Hero.module.css";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -11,6 +12,7 @@ gsap.registerPlugin(ScrollTrigger);
  */
 export function Hero() {
   const ref = useRef<HTMLElement>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -82,9 +84,9 @@ export function Hero() {
         <p className={styles.eyebrow}>Studio · Freestyle · Colorimetria — Anápolis GO</p>
         <h1 className={styles.title}>BRUXO DOS CABELOS</h1>
         <p className={styles.sub}>A tesoura é pincel. O cabelo é tela.</p>
-        <a className={styles.cta} href="#agendamento">
+        <button type="button" className={styles.cta} onClick={() => navigate("/app")}>
           Agendar
-        </a>
+        </button>
       </div>
 
       <div className={styles.scrollHint} aria-hidden>

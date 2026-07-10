@@ -1,15 +1,14 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
-import { getToken } from "../services/api";
 import * as authService from "../services/authService";
 import type { MeUser, RegisterData } from "../services/authService";
 
 interface AuthCtx {
   user: MeUser | null;
   ready: boolean;
-  login: (username: string, password: string) => Promise<void>;
-  register: (data: RegisterData) => Promise<void>;
-  logout: () => void;
+  login: (username: string, password: string) => Promise<MeUser>;
+  register: (data: RegisterData) => Promise<MeUser>;
+  logout: () => Promise<void>;
 }
 
 const Ctx = createContext<AuthCtx | null>(null);
@@ -26,30 +25,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      if (getToken()) {
-        try {
-          setUser(await authService.getMe());
-        } catch {
-          authService.logout();
-        }
+      try {
+        setUser(await authService.getMe());
+      } catch {
+        setUser(null);
+      } finally {
+        setReady(true);
       }
-      setReady(true);
     })();
   }, []);
 
   const login = async (username: string, password: string) => {
-    await authService.login(username, password);
-    setUser(await authService.getMe());
+    const nextUser = await authService.login(username, password);
+    setUser(nextUser);
+    return nextUser;
   };
 
   const register = async (data: RegisterData) => {
     await authService.register(data);
-    await login(data.username, data.password);
+    return login(data.username, data.password);
   };
 
-  const logout = () => {
-    authService.logout();
-    setUser(null);
+  const logout = async () => {
+    try {
+      await authService.logout();
+    } finally {
+      setUser(null);
+    }
   };
 
   return <Ctx.Provider value={{ user, ready, login, register, logout }}>{children}</Ctx.Provider>;
