@@ -1,13 +1,15 @@
-import { AnimatedTitle } from "../../../../components/AnimatedTitle/AnimatedTitle";
 import { testimonials } from "../../../../data/testimonials";
 import styles from "./Depoimentos.module.css";
 
 export function Depoimentos() {
+  // Sem depoimentos reais, a seção não aparece (nada de prova social falsa).
+  if (testimonials.length === 0) return null;
+
   return (
     <section id="depoimentos" className={styles.section}>
       <div className={styles.container}>
         <p className={styles.kicker}>Quem senta, volta</p>
-        <AnimatedTitle title={"O que dizem<br/>na <b>cadeira</b>"} className={styles.title} align="left" />
+          <h2 className={styles.title}>O que dizem na cadeira</h2>
 
         <div className={styles.grid}>
           {testimonials.map((t) => (

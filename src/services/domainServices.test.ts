@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { beforeEach, afterEach, describe, expect, test, vi } from "vitest";
 
 import { login, logout, register } from "./authService";
 import {
@@ -46,7 +46,9 @@ function mockJson(data: unknown, status = 200) {
 }
 
 describe("domain services", () => {
+  beforeEach(() => { document.cookie = "barder_csrf=test-token; path=/"; });
   afterEach(() => {
+    document.cookie = "barder_csrf=; Max-Age=0; path=/";
     vi.restoreAllMocks();
   });
 
@@ -62,11 +64,11 @@ describe("domain services", () => {
     await logout();
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8000/api/auth/login/",
+      "/api/auth/login/",
       expect.objectContaining({ credentials: "include", method: "POST" }),
     );
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8000/api/auth/logout/",
+      "/api/auth/logout/",
       expect.objectContaining({ credentials: "include", method: "POST" }),
     );
   });
@@ -81,11 +83,11 @@ describe("domain services", () => {
     await rescheduleBarberBooking(1, "2026-07-03T10:00:00-03:00");
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8000/api/scheduling/barber/bookings/?date=2026-07-02",
+      "/api/scheduling/barber/bookings/?date=2026-07-02",
       expect.objectContaining({ credentials: "include", method: "GET" }),
     );
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8000/api/scheduling/barber/bookings/1/reschedule/",
+      "/api/scheduling/barber/bookings/1/reschedule/",
       expect.objectContaining({ body: JSON.stringify({ new_start: "2026-07-03T10:00:00-03:00" }) }),
     );
   });
@@ -106,7 +108,7 @@ describe("domain services", () => {
     await updateLoyaltyTier(1, { active: false });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8000/api/loyalty/tiers/1/",
+      "/api/loyalty/tiers/1/",
       expect.objectContaining({ method: "PATCH", body: JSON.stringify({ active: false }) }),
     );
   });
@@ -133,7 +135,7 @@ describe("domain services", () => {
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8000/api/promotions/admin/gifts/",
+      "/api/promotions/admin/gifts/",
       expect.objectContaining({ method: "POST" }),
     );
   });
@@ -145,7 +147,7 @@ describe("domain services", () => {
     await cancelMyBooking(8, "nao posso ir");
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8000/api/scheduling/bookings/8/cancel/",
+      "/api/scheduling/bookings/8/cancel/",
       expect.objectContaining({ method: "POST", body: JSON.stringify({ reason: "nao posso ir" }) }),
     );
   });
@@ -166,6 +168,7 @@ describe("domain services", () => {
       name: "Corte",
       description: "Corte completo",
       price: "70.00",
+      price_type: "fixed",
       duration_min: 45,
       tool: "tesoura",
       active: true,
@@ -188,11 +191,11 @@ describe("domain services", () => {
     await deletePortfolioImage(1);
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8000/api/catalog/admin/services/1/",
+      "/api/catalog/admin/services/1/",
       expect.objectContaining({ method: "PATCH", body: JSON.stringify({ price: "75.00" }) }),
     );
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8000/api/catalog/admin/portfolio/1/",
+      "/api/catalog/admin/portfolio/1/",
       expect.objectContaining({ method: "DELETE" }),
     );
   });
@@ -205,11 +208,11 @@ describe("domain services", () => {
     await createPortfolioImage(form);
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8000/api/catalog/admin/portfolio/",
+      "/api/catalog/admin/portfolio/",
       expect.objectContaining({
         body: form,
         credentials: "include",
-        headers: {},
+        headers: { "X-Barder-CSRF": "test-token" },
         method: "POST",
       }),
     );

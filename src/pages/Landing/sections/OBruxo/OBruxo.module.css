@@ -87,3 +87,7 @@
   transform: translateY(-2px);
   box-shadow: 0 14px 40px -10px rgba(232, 23, 138, 0.7);
 }
+.title{font-family:var(--font-display);font-weight:900;line-height:1.15;color:#e5c7fa;overflow-wrap:anywhere;}
+.grid{grid-template-columns:minmax(0,1fr);}
+.text{color:#d5cce1;}
+@media(min-width:860px){.grid{grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);}}

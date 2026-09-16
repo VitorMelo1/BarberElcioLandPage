@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { beforeEach, afterEach, describe, expect, test, vi } from "vitest";
 
 import { api } from "./api";
 
@@ -11,7 +11,9 @@ function mockJson(data: unknown, status = 200) {
 }
 
 describe("api", () => {
+  beforeEach(() => { document.cookie = "barder_csrf=test-token; path=/"; });
   afterEach(() => {
+    document.cookie = "barder_csrf=; Max-Age=0; path=/";
     vi.restoreAllMocks();
   });
 
@@ -21,7 +23,7 @@ describe("api", () => {
     await api("/auth/me/");
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8000/api/auth/me/",
+      "/api/auth/me/",
       expect.objectContaining({
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -52,7 +54,7 @@ describe("api", () => {
 
     expect(result).toEqual({ id: 1 });
     expect(fetchMock).toHaveBeenCalledTimes(3);
-    expect(fetchMock.mock.calls[1][0]).toBe("http://127.0.0.1:8000/api/auth/refresh/");
+    expect(fetchMock.mock.calls[1][0]).toBe("/api/auth/refresh/");
   });
 
   test("does not renew the session when login fails", async () => {
@@ -84,8 +86,8 @@ describe("api", () => {
     await api("/catalog/admin/portfolio/", { method: "POST", body: form });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8000/api/catalog/admin/portfolio/",
-      expect.objectContaining({ body: form, headers: {} }),
+      "/api/catalog/admin/portfolio/",
+      expect.objectContaining({ body: form, headers: { "X-Barder-CSRF": "test-token" } }),
     );
   });
 });

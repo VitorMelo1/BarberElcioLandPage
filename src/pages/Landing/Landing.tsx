@@ -11,6 +11,7 @@ import { Planos } from "./sections/Planos/Planos";
 import { Agendamento } from "./sections/Agendamento/Agendamento";
 import { Local } from "./sections/Local/Local";
 import { Footer } from "./sections/Footer/Footer";
+import { Especialidades, Avaliacao } from "./sections/Especialidades/Especialidades";
 
 /**
  * Página Landing — composição das cenas (estratégia "Cinema do Bruxo": vídeo +
@@ -26,14 +27,14 @@ export function Landing() {
       <main>
         <Hero />
         <Destaque />
+        <Especialidades />
+        <Portfolio />
+        <Avaliacao />
         <Reveal>
           <OBruxo />
         </Reveal>
         <Reveal>
           <Servicos />
-        </Reveal>
-        <Reveal>
-          <Portfolio />
         </Reveal>
         <Reveal>
           <Depoimentos />

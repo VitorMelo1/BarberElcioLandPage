@@ -1,52 +1,15 @@
-import { useEffect, useState } from "react";
-
-import { plans } from "../../data/plans";
-import { getPlans, type ApiPlan } from "../../services/catalogService";
+import { useResource } from "../../hooks/useResource";
+import { getPlans } from "../../services/catalogService";
+import { money } from "../../utils/format";
 import styles from "./ClientApp.module.css";
-
 export function PlanosView() {
-  const [apiPlans, setApiPlans] = useState<ApiPlan[]>([]);
-
-  useEffect(() => {
-    getPlans()
-      .then((items) => setApiPlans(items))
-      .catch(() => setApiPlans([]));
-  }, []);
-
-  const visiblePlans =
-    apiPlans.length > 0
-      ? apiPlans.map((plan) => ({
-          id: String(plan.id),
-          name: plan.name,
-          items: plan.items,
-          from: Number(plan.price_from),
-          price: Number(plan.price),
-        }))
-      : plans;
-
-  return (
-    <div className={styles.view}>
-      <p className={styles.muted}>
-        Assine e economize todo mês. (Pagamento da assinatura entra em breve.)
-      </p>
-      <div className={styles.cards}>
-        {visiblePlans.map((p) => (
-          <div key={p.id} className={styles.plan}>
-            <h4 className={styles.planName}>{p.name}</h4>
-            <p className={styles.planItems}>{p.items}</p>
-            <div className={styles.planPrice}>
-              <span className={styles.from}>de R$ {p.from}</span>
-              <b>
-                R$ {p.price}
-                <small>/mês</small>
-              </b>
-            </div>
-            <button className={styles.ctaOutline} disabled>
-              Assinar (em breve)
-            </button>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  const plans = useResource(() => getPlans(), []);
+  return <div className={styles.view}>
+    <div className={styles.viewHeading}><div><h2>Cuide do seu estilo todo mês</h2><p>Consulte os planos do studio e combine a contratação com o Elcio.</p></div></div>
+    <p className={styles.quoteNote}>A contratação e as condições dos planos são combinadas diretamente com o studio. O agendamento avulso mostra seu próprio valor antes da confirmação.</p>
+    {plans.loading && <p role="status">Carregando planos…</p>}
+    {plans.error && <div className={styles.error} role="alert"><p>{plans.error}</p><button className={styles.secondary} onClick={plans.reload}>Tentar novamente</button></div>}
+    {!plans.loading && !plans.error && !plans.data?.length && <p className={styles.empty}>Nenhum plano disponível no momento. Você pode agendar um atendimento avulso.</p>}
+    <div className={styles.cards}>{plans.data?.filter(p => p.active).map(plan => <article className={styles.plan} key={plan.id}><h3>{plan.name}</h3><p>{plan.items}</p><div className={styles.planPrice}>{Number(plan.price_from) > Number(plan.price) && <del>{money(plan.price_from)}</del>}<strong>{money(plan.price)}<small>/mês</small></strong></div><a className={styles.secondary} href={`https://wa.me/5562993397680?text=${encodeURIComponent(`Olá! Gostaria de saber as condições do plano ${plan.name}.`)}`} target="_blank" rel="noreferrer">Consultar este plano</a></article>)}</div>
+  </div>;
 }

@@ -1,11 +1,15 @@
 import { api } from "./api";
 
+export type PriceType = "fixed" | "quote";
+
 export interface ApiService {
   id: number;
   slug: string;
   name: string;
   description: string;
   price: string;
+  price_type: PriceType;
+  specialty?: "" | "freestyle" | "colorimetry";
   duration_min: number;
   tool: string;
   active: boolean;

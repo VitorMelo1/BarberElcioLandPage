@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { beforeEach, afterEach, describe, expect, test, vi } from "vitest";
 
 import { createBooking, getSlots } from "./schedulingService";
 
@@ -11,7 +11,9 @@ function mockJson(data: unknown, status = 200) {
 }
 
 describe("scheduling service", () => {
+  beforeEach(() => { document.cookie = "barder_csrf=test-token; path=/"; });
   afterEach(() => {
+    document.cookie = "barder_csrf=; Max-Age=0; path=/";
     vi.restoreAllMocks();
   });
 
@@ -23,7 +25,7 @@ describe("scheduling service", () => {
     await getSlots("2026-07-01", [1, 2]);
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8000/api/scheduling/slots/?date=2026-07-01&services=1,2",
+      "/api/scheduling/slots/?date=2026-07-01&services=1,2",
       expect.objectContaining({ method: "GET" }),
     );
   });
@@ -36,7 +38,7 @@ describe("scheduling service", () => {
     await createBooking([1, 2], "2026-07-01T12:00:00-03:00");
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8000/api/scheduling/bookings/create/",
+      "/api/scheduling/bookings/create/",
       expect.objectContaining({
         method: "POST",
         headers: expect.objectContaining({
@@ -46,6 +48,7 @@ describe("scheduling service", () => {
         body: JSON.stringify({
           service_ids: [1, 2],
           start: "2026-07-01T12:00:00-03:00",
+          notes: "",
         }),
       }),
     );

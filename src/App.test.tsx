@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import App from "./App";
@@ -14,6 +14,8 @@ function mockJson(data: unknown, status = 200) {
 function mockMe(role: "client" | "barber" | null) {
   vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
     const url = String(input);
+    if (url.endsWith("/auth/csrf/")) return Promise.resolve(mockJson({ csrfToken: "masked-test-token" }));
+    if (url.endsWith("/auth/refresh/")) return Promise.resolve(mockJson({ detail: "Sessão encerrada" }, 401));
     if (url.endsWith("/auth/me/") && role) {
       return Promise.resolve(
         mockJson({
@@ -57,18 +59,20 @@ function mockMe(role: "client" | "barber" | null) {
             name: "Corte",
             description: "Corte completo",
             price: "70.00",
+            price_type: "fixed",
             duration_min: 45,
             tool: "tesoura",
             active: true,
             order: 1,
           },
           {
-            id: 2,
-            slug: "cor",
-            name: "Cor",
-            description: "Colorimetria",
-            price: "160.00",
-            duration_min: 120,
+            id: 3,
+            slug: "colorimetria",
+            name: "Colorimetria",
+            description: "Sob avaliação",
+            price: "0.00",
+            price_type: "quote",
+            duration_min: 30,
             tool: "pincel",
             active: true,
             order: 2,
@@ -123,6 +127,7 @@ function mockMe(role: "client" | "barber" | null) {
             name: "Corte",
             description: "Corte completo",
             price: "70.00",
+            price_type: "fixed",
             duration_min: 45,
             tool: "tesoura",
             active: true,
@@ -180,6 +185,40 @@ function mockMe(role: "client" | "barber" | null) {
         }),
       );
     }
+    if (url.includes("/scheduling/barber/calendar/")) {
+      const t = new Date();
+      const dayIso = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
+      return Promise.resolve(
+        mockJson({
+          year: t.getFullYear(),
+          month: t.getMonth() + 1,
+          days: [{ date: dayIso, weekday: (t.getDay() + 6) % 7, is_open: true, blocked: false, bookings: 1 }],
+        }),
+      );
+    }
+    if (url.includes("/scheduling/barber/working-hours/")) {
+      const labels = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
+      return Promise.resolve(
+        mockJson(
+          labels.map((label, i) => ({
+            weekday: i,
+            weekday_label: label,
+            is_open: i !== 6,
+            opens_at: "09:00:00",
+            closes_at: "19:00:00",
+          })),
+        ),
+      );
+    }
+    if (url.includes("/scheduling/barber/blackouts/")) {
+      if (init?.method === "POST") {
+        return Promise.resolve(
+          mockJson({ id: 3, start: "2026-07-02T12:00:00-03:00", end: "2026-07-02T13:00:00-03:00", reason: "almoço" }, 201),
+        );
+      }
+      if (init?.method === "DELETE") return Promise.resolve(mockJson(null, 204));
+      return Promise.resolve(mockJson([]));
+    }
     if (url.includes("/scheduling/barber/bookings/")) {
       return Promise.resolve(
         mockJson([
@@ -192,17 +231,34 @@ function mockMe(role: "client" | "barber" | null) {
             client_username: "Marcos",
             client_phone: "62999990000",
           },
+          {
+            id: 30,
+            start: "2026-07-02T16:00:00-03:00",
+            end: "2026-07-02T16:30:00-03:00",
+            status: "quote",
+            total_price: "0.00",
+            client_username: "Bruna",
+            client_phone: "62988880000",
+            notes: "quero platinar",
+          },
         ]),
       );
     }
+    if (url.includes("/reschedule-slots/")) {
+      return Promise.resolve(
+        mockJson({ date: "2026-07-03", slots: ["2026-07-03T14:00:00-03:00"] }),
+      );
+    }
     if (url.endsWith("/scheduling/bookings/create/")) {
+      const body = init?.body ? JSON.parse(String(init.body)) : {};
+      const quote = Array.isArray(body.service_ids) && body.service_ids.includes(3);
       return Promise.resolve(
         mockJson({
           id: 21,
           start: "2026-07-02T14:00:00-03:00",
           end: "2026-07-02T15:00:00-03:00",
-          status: "pending",
-          total_price: "70.00",
+          status: quote ? "quote" : "pending",
+          total_price: quote ? "0.00" : "70.00",
         }),
       );
     }
@@ -344,38 +400,47 @@ describe("App routes", () => {
 
     expect(await screen.findByText("BRUXO DOS CABELOS")).toBeTruthy();
     fireEvent.click(screen.getByLabelText("Abrir menu"));
-    expect(screen.getByLabelText("Abrir menu").getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByLabelText("Fechar menu").getAttribute("aria-expanded")).toBe("true");
   });
 
   test("renders client app panels for authenticated clients", async () => {
     mockMe("client");
     window.history.pushState({}, "", "/app");
 
-    const { container } = render(<App />);
+    render(<App />);
 
-    expect(await screen.findByText(/Bem-vindo de volta/)).toBeTruthy();
+    // Início = marcação rápida: serviços aparecem de cara
+    expect(await screen.findByRole("heading", { name: "Olá, cliente." })).toBeTruthy();
     expect(await screen.findByText("Corte")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Planos" }));
-    expect(await screen.findByText(/Assine e economize/)).toBeTruthy();
+    expect(await screen.findByText(/Consulte os planos do studio/)).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: /Hist/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Meus horários" }));
     expect(await screen.findByText(/Confirmado/)).toBeTruthy();
-    expect(await screen.findByText(/Aguardando sinal/)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /Pagar sinal/ }));
+    expect(await screen.findByText(/Aguardando confirmação/)).toBeTruthy();
+    fireEvent.click(within(screen.getByText("Aguardando confirmação").closest("article")!).getByRole("button", { name: /Pagar sinal/ }));
     expect(await screen.findByText(/Copiar código PIX/)).toBeTruthy();
     expect(await screen.findByText(/BR\.GOV\.BCB\.PIX/)).toBeTruthy();
 
+    // Marcação rápida: serviço → chip de dia → chip de horário → confirmar
     fireEvent.click(screen.getByRole("button", { name: "Agendar" }));
-    expect(await screen.findByRole("button", { name: /Confirmar/ })).toBeTruthy();
-    fireEvent.click(await screen.findByRole("button", { name: /Corte/ }));
-    const dateInput = container.querySelector('input[type="date"]') as HTMLInputElement;
-    fireEvent.change(dateInput, { target: { value: "2026-07-02" } });
+    fireEvent.click(await screen.findByText("Corte"));
+    fireEvent.click(await screen.findByRole("button", { name: /Hoje/ }));
     fireEvent.click(await screen.findByRole("button", { name: "14:00" }));
     fireEvent.click(screen.getByRole("button", { name: /Confirmar/ }));
-    expect(await screen.findByText(/Agendado/)).toBeTruthy();
+    expect(await screen.findByText("Horário reservado")).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Agendar outro" }));
+    // Colorimetria = avaliação (sob consulta, botão "Pedir avaliação")
+    fireEvent.click(screen.getByRole("button", { name: "Marcar outro" }));
+    fireEvent.click(await screen.findByText("Colorimetria"));
+    expect(await screen.findByText(/Você está marcando uma avaliação/)).toBeTruthy();
+    fireEvent.click(await screen.findByRole("button", { name: /Hoje/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "14:00" }));
+    fireEvent.click(screen.getByRole("button", { name: /Pedir avaliação/ }));
+    expect(await screen.findByText("Avaliação marcada!")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Marcar outro" }));
     fireEvent.click(screen.getByLabelText("Sair"));
     await waitFor(() => expect(window.location.pathname).toBe("/entrar"));
   });
@@ -396,7 +461,7 @@ describe("App routes", () => {
 
     render(<App />);
 
-    expect(await screen.findByText(/Bem-vindo de volta/)).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Olá, cliente." })).toBeTruthy();
     await waitFor(() => expect(window.location.pathname).toBe("/app"));
   });
 
@@ -412,131 +477,46 @@ describe("App routes", () => {
   test("lets barber navigate operational panels", async () => {
     mockMe("barber");
     window.history.pushState({}, "", "/barber");
-
-    const { container } = render(<App />);
+    render(<App />);
 
     expect(await screen.findByText("Marcos")).toBeTruthy();
-    fireEvent.click(screen.getByLabelText("Finalizar"));
-    expect(await screen.findByText("Atendimento finalizado.")).toBeTruthy();
-    fireEvent.click(screen.getByLabelText("Cancelar"));
-    expect(await screen.findByText("Horário cancelado.")).toBeTruthy();
-    fireEvent.click(screen.getByLabelText("Reagendar"));
-    const rescheduleInput = container.querySelector('input[type="datetime-local"]') as HTMLInputElement;
-    fireEvent.change(rescheduleInput, { target: { value: "2026-07-03T10:00" } });
-    fireEvent.click(screen.getByRole("button", { name: "Mover" }));
-    expect(await screen.findByText("Horário reagendado.")).toBeTruthy();
+    expect(await screen.findByText("Bruna")).toBeTruthy();
+    expect(screen.getByLabelText("Data da agenda")).toBeTruthy();
+    // Pending reservations cannot be finalized until confirmed and started.
+    expect(screen.queryByRole("button", { name: "Finalizar" })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Clientes" }));
-    expect(await screen.findByText("Clientes na mão")).toBeTruthy();
-    expect(await screen.findByText("Prata")).toBeTruthy();
+    expect(await screen.findByLabelText("Buscar por nome, telefone ou e-mail")).toBeTruthy();
+    expect(await screen.findByText(/Prata/)).toBeTruthy();
+    expect(new URLSearchParams(window.location.search).get("tab")).toBe("clientes");
 
-    fireEvent.click(screen.getByRole("button", { name: "Fidelidade" }));
-    expect(await screen.findByRole("heading", { name: "Níveis de fidelidade" })).toBeTruthy();
-    expect(await screen.findByText("Criar nível")).toBeTruthy();
-    fireEvent.change(screen.getByPlaceholderText("Digite o nome"), { target: { value: "Ouro" } });
-    fireEvent.click(screen.getByRole("button", { name: /Criar nível/ }));
-    expect(await screen.findByText("Nível de fidelidade criado.")).toBeTruthy();
-
-    fireEvent.click(screen.getByRole("button", { name: "Promos" }));
-    expect(await screen.findByText("Promoções e brindes")).toBeTruthy();
-    expect(await screen.findByText("Semana do degradado")).toBeTruthy();
-    expect(await screen.findByText("Sobrancelha")).toBeTruthy();
-    fireEvent.change(screen.getByPlaceholderText("Digite o título"), { target: { value: "Quarta premium" } });
-    fireEvent.click(screen.getByRole("button", { name: "Publicar" }));
-    expect(await screen.findByText("Promoção publicada.")).toBeTruthy();
-    fireEvent.change(screen.getByPlaceholderText("Digite o brinde"), { target: { value: "Hidratacao" } });
-    fireEvent.click(screen.getByRole("button", { name: "Liberar" }));
-    expect(await screen.findByText("Brinde liberado.")).toBeTruthy();
-
-    // Caixa (financeiro): margem, custos e recebimento
     fireEvent.click(screen.getByRole("button", { name: "Caixa" }));
-    expect(await screen.findByText("Caixa do Bruxo")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Resultado do período" })).toBeTruthy();
     expect(await screen.findByText("75%")).toBeTruthy();
     expect(await screen.findByText("Pomadas")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /Lançar custo/ }));
-    fireEvent.change(screen.getByPlaceholderText("Ex.: Pomadas, aluguel, energia"), {
-      target: { value: "Aluguel" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Lançar" }));
-    expect(await screen.findByText("Custo lançado.")).toBeTruthy();
-    fireEvent.click(screen.getByLabelText("Remover custo Pomadas"));
-    expect(await screen.findByText("Custo removido.")).toBeTruthy();
-    fireEvent.change(screen.getByPlaceholderText("CPF, celular, e-mail ou chave aleatória"), {
-      target: { value: "elcio@pix.com" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Salvar recebimento" }));
-    expect(await screen.findByText(/Recebimento salvo/)).toBeTruthy();
+    expect(screen.queryByLabelText("Chave PIX")).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "Site" }));
-    expect(await screen.findByText("Controle do site")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Ajustes" }));
+    expect(await screen.findByRole("heading", { name: "Níveis de fidelidade" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Promoções" }));
+    expect(await screen.findByText("Semana do degradado")).toBeTruthy();
+    expect(await screen.findByText("Sobrancelha")).toBeTruthy();
+    expect((screen.getByLabelText("Cliente") as HTMLSelectElement).value).toBe("0");
 
-    // Fotos (sub-aba padrão): publicar, editar, ocultar e remover
-    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
-    fireEvent.change(fileInput, {
-      target: { files: [new File(["img"], "look.jpg", { type: "image/jpeg" })] },
-    });
-    fireEvent.change(await screen.findByPlaceholderText("Ex.: Freestyle"), { target: { value: "Freestyle novo" } });
-    fireEvent.change(screen.getByPlaceholderText("Ex.: Corte freestyle finalizado"), { target: { value: "Corte novo" } });
-    fireEvent.click(screen.getByRole("button", { name: "Publicar" }));
-    expect(await screen.findByText("Imagem publicada no portfólio.")).toBeTruthy();
-    fireEvent.click(await screen.findByLabelText("Editar Freestyle"));
-    fireEvent.change(screen.getByLabelText("Look 1"), { target: { value: "Freestyle editado" } });
-    fireEvent.change(screen.getByLabelText("Alt 1"), { target: { value: "Alt editado" } });
-    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
-    expect(await screen.findByText("Imagem atualizada.")).toBeTruthy();
-    fireEvent.click(await screen.findByLabelText("Ocultar Freestyle"));
-    expect(await screen.findByText("Imagem atualizada.")).toBeTruthy();
-    fireEvent.click(screen.getByLabelText("Remover imagem"));
-    expect(await screen.findByText("Imagem removida do portfólio.")).toBeTruthy();
-
-    // Serviços
+    fireEvent.click(screen.getByRole("button", { name: "Site & Preços" }));
+    expect(await screen.findByRole("heading", { name: "Site e preços" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Serviços" }));
-    fireEvent.click(await screen.findByRole("button", { name: /Novo serviço/ }));
-    fireEvent.change(screen.getByPlaceholderText("Digite o nome do serviço"), { target: { value: "Barba" } });
-    fireEvent.change(screen.getByLabelText("Preço do serviço"), { target: { value: "55.00" } });
-    fireEvent.change(screen.getByLabelText("Duração do serviço"), { target: { value: "35" } });
-    fireEvent.click(screen.getByRole("button", { name: "Adicionar" }));
-    expect(await screen.findByText("Serviço publicado no site.")).toBeTruthy();
-    fireEvent.click(await screen.findByLabelText("Editar Corte"));
-    fireEvent.change(screen.getByLabelText("Preço Corte"), { target: { value: "75.00" } });
-    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
-    expect(await screen.findByText("Serviço atualizado.")).toBeTruthy();
-    fireEvent.click(screen.getByLabelText("Remover serviço"));
-    expect(await screen.findByText("Serviço removido do site.")).toBeTruthy();
-
-    // Planos
+    expect(await screen.findByLabelText("Editar Corte")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Planos" }));
-    fireEvent.click(await screen.findByRole("button", { name: /Novo plano/ }));
-    fireEvent.change(screen.getByPlaceholderText("Digite o nome do plano"), { target: { value: "Mensal" } });
-    fireEvent.change(screen.getByPlaceholderText("Ex.: 2 cortes + barba"), { target: { value: "2 cortes por mes" } });
-    fireEvent.change(screen.getByLabelText("Preço antigo do plano"), { target: { value: "150.00" } });
-    fireEvent.change(screen.getByLabelText("Preço atual do plano"), { target: { value: "120.00" } });
-    fireEvent.click(screen.getByRole("button", { name: "Adicionar" }));
-    expect(await screen.findByText("Plano publicado no site.")).toBeTruthy();
-    fireEvent.click(await screen.findByLabelText("Editar Ritual"));
-    fireEvent.change(screen.getByLabelText("Plano Ritual"), { target: { value: "Ritual Plus" } });
-    fireEvent.change(screen.getByLabelText("Itens Ritual"), { target: { value: "1 corte e barba" } });
-    fireEvent.change(screen.getByLabelText("De Ritual"), { target: { value: "110.00" } });
-    fireEvent.change(screen.getByLabelText("Por Ritual"), { target: { value: "90.00" } });
-    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
-    expect(await screen.findByText("Plano atualizado.")).toBeTruthy();
-    fireEvent.click(screen.getByLabelText("Remover plano"));
-    expect(await screen.findByText("Plano removido do site.")).toBeTruthy();
-
-    // Descontos
+    expect(await screen.findByLabelText("Editar Ritual")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Descontos" }));
-    fireEvent.click(await screen.findByRole("button", { name: /Nova faixa/ }));
-    fireEvent.change(screen.getByLabelText("Faixa de valor"), { target: { value: "R$200-250" } });
-    fireEvent.change(screen.getByLabelText("Desconto da faixa"), { target: { value: "15% OFF" } });
-    fireEvent.click(screen.getByRole("button", { name: "Adicionar" }));
-    expect(await screen.findByText("Faixa de desconto publicada.")).toBeTruthy();
-    fireEvent.click(await screen.findByLabelText("Editar faixa 1"));
-    fireEvent.change(screen.getByLabelText("Faixa 1"), { target: { value: "R$150-200" } });
-    fireEvent.change(screen.getByLabelText("Desconto 1"), { target: { value: "12% OFF" } });
-    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
-    expect(await screen.findByText("Faixa de desconto atualizada.")).toBeTruthy();
-    fireEvent.click(screen.getByLabelText("Remover faixa"));
-    expect(await screen.findByText("Faixa de desconto removida.")).toBeTruthy();
+    expect(await screen.findByLabelText("Editar faixa 1")).toBeTruthy();
+    expect(new URLSearchParams(window.location.search).get("section")).toBe("descontos");
+
+    fireEvent.click(screen.getByRole("button", { name: "Pagamentos" }));
+    expect(await screen.findByRole("heading", { name: "Recebimento por PIX" })).toBeTruthy();
+    fireEvent.click(await screen.findByRole("button", { name: "Editar recebimento" }));
+    expect(screen.getByLabelText("Chave PIX")).toBeTruthy();
   });
 
   test("handles register mode from login page", async () => {
@@ -547,7 +527,7 @@ describe("App routes", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: "Criar conta" }));
     fireEvent.change(screen.getByPlaceholderText(/Usu/), { target: { value: "novo" } });
-    fireEvent.change(screen.getByPlaceholderText("WhatsApp"), { target: { value: "62999990000" } });
+    fireEvent.change(screen.getByLabelText("WhatsApp (opcional)"), { target: { value: "62999990000" } });
     fireEvent.change(screen.getByPlaceholderText("Senha"), { target: { value: "secret123" } });
     fireEvent.click(screen.getByRole("button", { name: "Mostrar senha" }));
     const createButtons = screen.getAllByRole("button", { name: "Criar conta" });

@@ -1,5 +1,8 @@
 import { afterEach } from "vitest";
-import { cleanup } from "@testing-library/react";
+import { cleanup, configure } from "@testing-library/react";
+
+// Lazy route modules compile on first use; allow the same bounded loading period as a slow device.
+configure({ asyncUtilTimeout: 5000 });
 
 Object.defineProperty(window, "matchMedia", {
   writable: true,

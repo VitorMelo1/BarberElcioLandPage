@@ -10,8 +10,8 @@ export default defineConfig({
     // Em dev a API é servida same-origin (/api) — cookie de sessão vira
     // first-party e sobrevive a reload em localhost E 127.0.0.1.
     proxy: {
-      "/api": { target: "http://127.0.0.1:8000", changeOrigin: false },
-      "/media": { target: "http://127.0.0.1:8000", changeOrigin: false },
+      "/api": { target: process.env.BARDER_API_PROXY || "http://127.0.0.1:8000", changeOrigin: false },
+      "/media": { target: process.env.BARDER_API_PROXY || "http://127.0.0.1:8000", changeOrigin: false },
     },
   },
   build: {
@@ -26,6 +26,8 @@ export default defineConfig({
     },
   },
   test: {
+    // Keep mocked unit requests independent from a developer's private .env.test.
+    env: { VITE_API_URL: "/api" },
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
     coverage: {

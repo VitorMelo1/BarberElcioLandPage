@@ -19,7 +19,7 @@ html {
 }
 
 /* Orbs de gradiente no fundo (tira a escuridão chapada) */
-body::before {
+body:has(.landing)::before {
   content: "";
   position: fixed;
   inset: 0;
@@ -33,13 +33,10 @@ body::before {
 }
 
 /* Seções translúcidas pra os orbs brilharem através (exceto a hero, que tem vídeo) */
-main section:not(#top),
-footer {
-  background: rgba(13, 10, 26, 0.66) !important;
-}
+.landing main section:not(#top), .landing footer { background: rgba(13, 10, 26, 0.66); }
 
 /* Grão de filme sutil — acabamento premium no site todo */
-body::after {
+body:has(.landing)::after {
   content: "";
   position: fixed;
   inset: 0;
@@ -75,4 +72,20 @@ video {
 ::selection {
   background: var(--c-magenta);
   color: #fff;
+}
+
+button, input, select, textarea { font: inherit; }
+button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+button:not(:disabled), a { touch-action: manipulation; }
+:focus-visible { outline: 3px solid #a67ddd; outline-offset: 3px; }
+button:disabled { cursor: not-allowed; }
+.skipLink { position: fixed; left: 16px; top: -100px; z-index: 10000; padding: 12px 18px; background: var(--ui-action); color: white; border-radius: 8px; }
+.skipLink:focus { top: 16px; }
+.recovery { position: relative; z-index: 1; min-height: 100dvh; background: var(--ui-bg); color: var(--ui-ink); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: 32px; text-align: center; }
+.recovery h1 { font-size: clamp(1.5rem,4vw,2rem); }
+.recovery p { max-width: 60ch; }
+.recovery button, .recovery a { min-height: 44px; padding: 12px 20px; background: var(--ui-action); color: white; border: 0; border-radius: 8px; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }

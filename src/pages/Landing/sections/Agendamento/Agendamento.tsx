@@ -10,8 +10,7 @@ export function Agendamento() {
         <p className={styles.kicker}>Reserve seu horário</p>
         <h2 className={styles.title}>Pronto pra sentar na cadeira do Bruxo?</h2>
         <p className={styles.lead}>
-          Agende direto pelo site: escolha o serviço, veja os horários livres e confirme. O sinal de
-          50% você combina com o Elcio.
+          Para cortes e outros serviços com preço definido, escolha um horário e confira o sinal de 50%. Para Freestyle e Colorimetria, agende primeiro a avaliação: o valor e o tempo do procedimento serão apresentados na proposta.
         </p>
         <button className={styles.cta} onClick={() => navigate("/app")}>
           Agendar online
@@ -20,14 +19,14 @@ export function Agendamento() {
           style={{
             display: "block",
             marginTop: "1.1rem",
-            color: "rgba(240,234,248,0.55)",
+            color: "#e2d7ee",
             fontSize: "0.85rem",
           }}
           href="https://wa.me/5562993397680"
           target="_blank"
           rel="noreferrer"
         >
-          ou chamar no WhatsApp →
+          Conversar pelo WhatsApp
         </a>
       </div>
     </section>

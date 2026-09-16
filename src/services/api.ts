@@ -1,51 +1,93 @@
-const BASE = (import.meta.env.VITE_API_URL as string) || "http://127.0.0.1:8000/api";
+const BASE = ((import.meta.env.VITE_API_URL as string) || "/api").replace(/\/$/, "");
+const NO_REFRESH = ["/auth/login/", "/auth/register/", "/auth/refresh/", "/auth/logout/", "/auth/csrf/"];
+const SAFE = new Set(["GET", "HEAD", "OPTIONS"]);
 
-interface ApiOpts {
-  method?: string;
-  body?: unknown;
+export interface ApiOpts { method?: string; body?: unknown; signal?: AbortSignal; }
+export class ApiError extends Error {
+  constructor(message: string, public status: number, public fields: Record<string, unknown> = {}) {
+    super(message);
+    this.name = "ApiError";
+  }
 }
-
-/* Endpoints em que um 401 é resposta final — não adianta renovar o token. */
-const NO_REFRESH = ["/auth/login/", "/auth/register/", "/auth/refresh/", "/auth/logout/"];
-
-/* Uma renovação por vez: chamadas concorrentes com 401 compartilham a mesma promise. */
-let refreshing: Promise<boolean> | null = null;
-
-function tryRefresh(): Promise<boolean> {
-  refreshing ??= fetch(`${BASE}/auth/refresh/`, { method: "POST", credentials: "include" })
-    .then((res) => res.ok)
-    .catch(() => false)
-    .finally(() => {
-      refreshing = null;
+function errorFrom(status: number, data: unknown): ApiError {
+  const fields = data && typeof data === "object" && !Array.isArray(data) ? data as Record<string, unknown> : {};
+  const details = Object.entries(fields).filter(([key]) => key !== "code").map(([key, value]) => {
+    const text = Array.isArray(value) ? value.filter(v => typeof v === "string").join(" ") : typeof value === "string" ? value : "";
+    return text ? ["detail", "non_field_errors"].includes(key) ? text : `${key}: ${text}` : "";
+  }).filter(Boolean).join(" ");
+  const fallback = status >= 500 ? "O servidor está indisponível. Tente novamente em instantes."
+    : status === 401 ? "Sua sessão terminou. Entre novamente."
+    : status === 403 ? "Esta ação não está disponível para sua conta."
+    : status === 429 ? "Muitas tentativas. Aguarde um pouco e tente novamente."
+    : "Não foi possível concluir. Confira os dados e tente novamente.";
+  return new ApiError(details || fallback, status, fields);
+}
+function csrfCookie(): string {
+  if (typeof document === "undefined") return "";
+  const match = document.cookie.match(/(?:^|;\s*)barder_csrf=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : "";
+}
+async function request(path: string, init: RequestInit = {}) {
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  if (init.signal?.aborted) controller.abort();
+  init.signal?.addEventListener("abort", abort, { once: true });
+  let timedOut = false;
+  const timeout = setTimeout(() => { timedOut = true; controller.abort(); }, 20_000);
+  try {
+    const response = await fetch(`${BASE}${path}`, { ...init, credentials: "include", signal: controller.signal });
+    const data: unknown = response.status === 204 ? null : await response.json().catch((error: unknown) => {
+      if ((error as { name?: string } | null)?.name === "AbortError") throw error;
+      return null;
     });
+    return { response, data };
+  } catch (error) {
+    if (timedOut) throw new ApiError("O servidor demorou para responder. Tente novamente.", 0);
+    if ((error as { name?: string } | null)?.name === "AbortError") throw error;
+    throw new ApiError("Sem conexão com o servidor. Verifique sua conexão e tente novamente.", 0);
+  } finally {
+    clearTimeout(timeout);
+    init.signal?.removeEventListener("abort", abort);
+  }
+}
+let csrfBootstrap: Promise<string> | null = null;
+async function csrfToken(): Promise<string> {
+  const cookie = csrfCookie();
+  if (cookie) return cookie;
+  csrfBootstrap ??= request("/auth/csrf/").then(({ response, data }) => {
+    if (!response.ok) throw errorFrom(response.status, data);
+    const token = (data as { csrfToken?: string } | null)?.csrfToken || csrfCookie();
+    if (!token) throw new ApiError("Não foi possível preparar sua sessão. Recarregue a página.", 0);
+    return token;
+  }).finally(() => { csrfBootstrap = null; });
+  return csrfBootstrap;
+}
+let refreshing: Promise<boolean> | null = null;
+function tryRefresh(): Promise<boolean> {
+  refreshing ??= (async () => {
+    const token = await csrfToken();
+    const { response, data } = await request("/auth/refresh/", { method: "POST", headers: { "X-Barder-CSRF": token } });
+    if (!response.ok && response.status !== 401 && response.status !== 403) throw errorFrom(response.status, data);
+    return response.ok;
+  })().finally(() => { refreshing = null; });
   return refreshing;
 }
-
 export async function api<T = unknown>(path: string, opts: ApiOpts = {}, retried = false): Promise<T> {
-  const { method = "GET", body } = opts;
-  const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
+  const method = (opts.method || "GET").toUpperCase();
+  const isFormData = typeof FormData !== "undefined" && opts.body instanceof FormData;
   const headers: Record<string, string> = isFormData ? {} : { "Content-Type": "application/json" };
-  let res: Response;
-  try {
-    res = await fetch(`${BASE}${path}`, {
-      method,
-      headers,
-      credentials: "include",
-      body: body !== undefined ? (isFormData ? body : JSON.stringify(body)) : undefined,
-    });
-  } catch {
-    // Rede fora ou servidor caído — mensagem legível em vez de "Failed to fetch".
-    throw new Error("Sem conexão com o servidor. Tenta de novo em instantes.");
-  }
-  if (res.status === 401 && !retried && !NO_REFRESH.some((p) => path.startsWith(p))) {
-    // Access expirou (60 min): renova via cookie de refresh e repete a chamada uma vez.
+  if (!SAFE.has(method)) headers["X-Barder-CSRF"] = await csrfToken();
+  opts.signal?.throwIfAborted();
+  const { response, data } = await request(path, {
+    method, headers, signal: opts.signal,
+    body: opts.body === undefined ? undefined : isFormData ? opts.body as FormData : JSON.stringify(opts.body),
+  });
+  if (response.status === 401 && !retried && !NO_REFRESH.some(p => path.startsWith(p))) {
     if (await tryRefresh()) return api<T>(path, opts, true);
   }
-  const data = res.status === 204 ? null : await res.json().catch(() => null);
-  if (!res.ok) {
-    const msg =
-      (data && (data.detail || data.username?.[0] || data.password?.[0])) || `Erro ${res.status}`;
-    throw new Error(msg);
+  if (!response.ok) {
+    if (response.status === 401 && !NO_REFRESH.some(p => path.startsWith(p)) && typeof window !== "undefined") window.dispatchEvent(new Event("barder:session-expired"));
+    throw errorFrom(response.status, data);
   }
   return data as T;
 }

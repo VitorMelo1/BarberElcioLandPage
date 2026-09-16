@@ -1,7 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { useNavigate } from "react-router-dom";
 import styles from "./Hero.module.css";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -12,7 +11,16 @@ gsap.registerPlugin(ScrollTrigger);
  */
 export function Hero() {
   const ref = useRef<HTMLElement>(null);
-  const navigate = useNavigate();
+  const video = useRef<HTMLVideoElement>(null);
+  const [paused,setPaused] = useState(true);
+  const [reduced,setReduced] = useState(()=>window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  useEffect(()=>{
+    const media=window.matchMedia("(prefers-reduced-motion: reduce)");
+    const change=()=>{setReduced(media.matches);if(media.matches)video.current?.pause();};
+    media.addEventListener("change",change);return()=>media.removeEventListener("change",change);
+  },[]);
+  async function toggleVideo(){if(!video.current)return;if(video.current.paused){try{await video.current.play();}catch{setPaused(true);}}else video.current.pause();}
+
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -63,7 +71,13 @@ export function Hero() {
     <section className={styles.hero} id="top" ref={ref}>
       <video
         className={styles.video}
-        autoPlay
+        ref={video}
+        aria-hidden="true"
+        tabIndex={-1}
+        preload="none"
+        autoPlay={!reduced}
+        onPlay={()=>setPaused(false)}
+        onPause={()=>setPaused(true)}
         muted
         loop
         playsInline
@@ -83,12 +97,13 @@ export function Hero() {
         />
         <p className={styles.eyebrow}>Studio · Freestyle · Colorimetria — Anápolis GO</p>
         <h1 className={styles.title}>BRUXO DOS CABELOS</h1>
-        <p className={styles.sub}>A tesoura é pincel. O cabelo é tela.</p>
-        <button type="button" className={styles.cta} onClick={() => navigate("/app")}>
-          Agendar
-        </button>
+        <p className={styles.sub}>Freestyle e Colorimetria com Elcio.</p>
+        <p className={styles.invitation}>Sua ideia de desenho ou cor começa com uma avaliação.</p>
+        <a className={styles.cta} href="#avaliacao">Agendar avaliação</a>
+        <a className={styles.workLink} href="#portfolio">Ver trabalhos</a>
       </div>
 
+<button type="button" className={styles.videoControl} onClick={()=>void toggleVideo()}>{paused ? "Reproduzir vídeo" : "Pausar vídeo"}</button>
       <div className={styles.scrollHint} aria-hidden>
         role para ver a mágica ↓
       </div>

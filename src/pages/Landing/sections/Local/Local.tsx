@@ -1,4 +1,3 @@
-import { AnimatedTitle } from "../../../../components/AnimatedTitle/AnimatedTitle";
 import styles from "./Local.module.css";
 
 const MAP_SRC =
@@ -10,7 +9,7 @@ export function Local() {
       <div className={styles.container}>
         <div className={styles.info}>
           <p className={styles.kicker}>Onde a mágica acontece</p>
-          <AnimatedTitle title={"Cola no<br/><b>Studio</b>"} className={styles.title} align="left" />
+          <h2 className={styles.title}>Cola no Studio</h2>
           <ul className={styles.list}>
             <li>
               <span className={styles.label}>Endereço</span>
@@ -30,10 +29,10 @@ export function Local() {
             </li>
             <li>
               <span className={styles.label}>Horário</span>
-              Segunda a Sábado
+              Atendimento com horário marcado. Consulte as vagas na agenda online.
             </li>
           </ul>
-          <a className={styles.cta} href="#agendamento">
+          <a className={styles.cta} href="/app">
             Agendar horário
           </a>
         </div>

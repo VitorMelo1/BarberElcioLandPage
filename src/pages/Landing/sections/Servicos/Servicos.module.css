@@ -110,3 +110,14 @@
   font-weight: 600;
   white-space: nowrap;
 }
+/* Published catalog has readable values and an action for each service. */
+.lead,.cardDesc,.serviceMeta{color:#d5cce1;}
+.card{display:flex;flex-direction:column;align-items:flex-start;gap:.7rem;}
+.cardTitle{margin-top:0;overflow-wrap:anywhere;}
+.cardDesc{margin-top:0;}
+.serviceMeta{font-size:.875rem;line-height:1.5;}
+.price{font-size:1.3rem;margin-top:auto;}
+.book,.retry{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:.65rem 1rem;background:#6941b7;border:1px solid #a984dd;border-radius:8px;color:white;font:600 .95rem var(--font-body),sans-serif;text-decoration:none;margin-top:.5rem;}
+.book:focus-visible,.retry:focus-visible{outline:3px solid #e4c7ff;outline-offset:3px;}
+.section{scroll-margin-top:90px;}
+@media(prefers-reduced-motion:reduce){.card,.card:hover{transition:none;transform:none;}}

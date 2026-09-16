@@ -179,3 +179,9 @@
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
+.brand,.link,.cta,.panelLink,.panelCta{min-height:44px;}
+.burger{width:44px;height:44px;}
+.link{color:#e5dced;}
+.cta,.panelCta{background:#6941b7;color:white;}
+.header button:focus-visible{outline:3px solid #e4c7ff;outline-offset:3px;}
+@media(prefers-reduced-motion:reduce){.header *,.header{transition:none;}.cta:hover{transform:none;}}

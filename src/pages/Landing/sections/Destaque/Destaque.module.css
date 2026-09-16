@@ -49,3 +49,6 @@
   height: 100%;
   object-fit: cover;
 }
+.title{font-family:var(--font-display);font-weight:900;line-height:1.1;color:#e5c7fa;max-width:100%;}
+.lead{color:#d5cce1;}
+@media(max-width:767px){.title{font-size:clamp(1.8rem,7vw,2.5rem);}.clipWrap{height:65vh;max-height:600px;}.clip{width:min(85%,540px);height:90%;}}

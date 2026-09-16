@@ -1,5 +1,23 @@
 /* Tokens da marca — extraídos de elcio_barber_brand_kit.html */
 :root {
+  --ui-bg: #0d0a1a;
+  --ui-surface: #1a112b;
+  --ui-surface-raised: #231738;
+  --ui-ink: #f0eaf8;
+  --ui-accent: #c7a2f0;
+  --ui-deep: #dec2ff;
+  --ui-action: #7b35c0;
+  --ui-action-hover: #65259f;
+  --ui-muted: #baafcb;
+  --ui-border: #48325f;
+  --ui-tint: #302044;
+  --ui-danger: #ffabc3;
+  --ui-danger-bg: #391728;
+  --ui-danger-action: #992454;
+  --ui-success: #a0e0bd;
+  --ui-success-bg: #142e28;
+  --ui-warning: #f4d18b;
+  --ui-warning-bg: #332917;
   /* Paleta */
   --c-magenta: #e8178a; /* primária */
   --c-purple: #7b35c0; /* secundária */

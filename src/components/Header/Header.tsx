@@ -1,18 +1,28 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./Header.module.css";
 
 const LINKS = [
-  { id: "bruxo", label: "O Bruxo" },
-  { id: "servicos", label: "Serviços" },
+  { id: "especialidades", label: "Especialidades" },
   { id: "portfolio", label: "Portfólio" },
-  { id: "planos", label: "Planos" },
+  { id: "avaliacao", label: "Avaliação" },
+  { id: "servicos", label: "Serviços" },
 ];
 
 export function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
+  const trigger = useRef<HTMLButtonElement>(null);
+  const menu = useRef<HTMLElement>(null);
+  const motion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+  useEffect(()=>{
+    if(!open)return;
+    menu.current?.querySelector<HTMLButtonElement>("button")?.focus();
+    const keydown=(event:KeyboardEvent)=>{if(event.key === "Escape"){setOpen(false);trigger.current?.focus();}};
+    document.addEventListener("keydown",keydown);
+    return()=>document.removeEventListener("keydown",keydown);
+  },[open]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -22,7 +32,7 @@ export function Header() {
   }, []);
 
   const go = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    document.getElementById(id)?.scrollIntoView({ behavior: motion(), block: "start" });
     setOpen(false);
   };
 
@@ -32,8 +42,9 @@ export function Header() {
         <button
           type="button"
           className={styles.brand}
+          aria-label="Studio do Bruxo — voltar ao início"
           onClick={() => {
-            window.scrollTo({ top: 0, behavior: "smooth" });
+            window.scrollTo({ top: 0, behavior: motion() });
             setOpen(false);
           }}
         >
@@ -43,7 +54,7 @@ export function Header() {
           </span>
         </button>
 
-        <nav className={styles.nav}>
+        <nav className={styles.nav} aria-label="Seções do site">
           {LINKS.map((l) => (
             <button key={l.id} type="button" onClick={() => go(l.id)} className={styles.link}>
               {l.label}
@@ -58,7 +69,9 @@ export function Header() {
           <button
             type="button"
             className={`${styles.burger} ${open ? styles.burgerOpen : ""}`}
-            aria-label="Abrir menu"
+            ref={trigger}
+            aria-label={open ? "Fechar menu" : "Abrir menu"}
+            aria-controls="public-menu"
             aria-expanded={open}
             onClick={() => setOpen((o) => !o)}
           >
@@ -69,7 +82,7 @@ export function Header() {
         </div>
       </div>
 
-      <div className={`${styles.panel} ${open ? styles.panelOpen : ""}`}>
+      {open && <nav id="public-menu" ref={menu} aria-label="Menu móvel" className={`${styles.panel} ${styles.panelOpen}`}>
         {LINKS.map((l) => (
           <button key={l.id} type="button" onClick={() => go(l.id)} className={styles.panelLink}>
             {l.label}
@@ -85,7 +98,7 @@ export function Header() {
         >
           Agendar
         </button>
-      </div>
+      </nav>}
     </header>
   );
 }

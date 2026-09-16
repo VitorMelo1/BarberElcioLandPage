@@ -40,10 +40,24 @@ export interface PaymentSettings {
 }
 
 export interface BookingPix {
+  configured?: boolean;
+  expires_at?: string;
+  requires_review?: boolean;
+  auto?: boolean; // true = Mercado Pago (confirma sozinho)
   brcode: string;
   amount: string;
-  holder: string;
+  holder?: string;
+  deposit_paid?: boolean;
+  qr_code_base64?: string; // imagem PNG do QR (só no MP)
+  payment_status?: string | null;
+}
+
+export interface PaymentStatus {
+  requires_review?: boolean;
+  expires_at?: string;
   deposit_paid: boolean;
+  status: string;
+  payment_status: string | null;
 }
 
 export const getFinanceSummary = (year: number, month: number) =>
@@ -70,5 +84,8 @@ export interface PaymentSettingsUpdate {
 export const savePaymentSettings = (payload: PaymentSettingsUpdate) =>
   api<PaymentSettings>("/finance/settings/", { method: "PUT", body: payload });
 
-export const getBookingPix = (bookingId: number) =>
-  api<BookingPix>(`/finance/bookings/${bookingId}/pix/`);
+export const getBookingPix = (bookingId: number, signal?: AbortSignal) =>
+  api<BookingPix>(`/finance/bookings/${bookingId}/pix/`, { method: "POST", signal });
+
+export const getBookingPaymentStatus = (bookingId: number, signal?: AbortSignal) =>
+  api<PaymentStatus>(`/finance/bookings/${bookingId}/payment-status/`, { method: "POST", signal });

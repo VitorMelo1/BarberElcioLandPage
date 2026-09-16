@@ -1,4 +1,3 @@
-import { AnimatedTitle } from "../../../../components/AnimatedTitle/AnimatedTitle";
 import styles from "./OBruxo.module.css";
 
 const SPECIALTIES = ["Freestyle", "Colorimetria", "Barba & Navalha", "Cortes femininos"];
@@ -17,7 +16,7 @@ export function OBruxo() {
 
         <div className={styles.body}>
           <p className={styles.kicker}>Quem segura a tesoura</p>
-          <AnimatedTitle title={"O <b>Bruxo</b><br/>dos Cabelos"} className={styles.title} align="left" />
+          <h2 className={styles.title}>O Bruxo dos Cabelos</h2>
           <p className={styles.text}>
             Elcio não corta cabelo — ele desenha. Especialista em freestyle e colorimetria,
             transforma cada cadeira numa tela: do degradê preciso à cor que ninguém mais ousa.

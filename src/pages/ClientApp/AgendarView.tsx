@@ -1,153 +1,103 @@
 import { useEffect, useState } from "react";
-
+import { Link, useSearchParams } from "react-router-dom";
+import { Check, Clock, Palette, Scissors } from "lucide-react";
+import { useResource } from "../../hooks/useResource";
 import { getServices, type ApiService } from "../../services/catalogService";
-import { createBooking, getSlots } from "../../services/schedulingService";
+import { createBooking, getSlots, type Booking } from "../../services/schedulingService";
+import { appointmentDate, depositAmount, money, time } from "../../utils/format";
+import { DatePicker } from "./DatePicker";
 import styles from "./ClientApp.module.css";
 
-const todayStr = () => new Date().toISOString().slice(0, 10);
-const fmtTime = (iso: string) =>
-  new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-
 export function AgendarView() {
-  const [services, setServices] = useState<ApiService[]>([]);
+  const catalog = useResource(() => getServices(), []);
+  const [params] = useSearchParams();
   const [selected, setSelected] = useState<number[]>([]);
-  const [date, setDate] = useState("");
-  const [slots, setSlots] = useState<string[]>([]);
-  const [slot, setSlot] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [day, setDay] = useState("");
+  const [slot, setSlot] = useState("");
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [done, setDone] = useState<string | null>(null);
-
+  const [done, setDone] = useState<Booking | null>(null);
+  const services = catalog.data?.filter(s => s.active) ?? [];
+  const chosen = services.filter(s => selected.includes(s.id));
+  const isQuote = chosen.some(s => s.price_type === "quote");
+  const total = chosen.reduce((sum, s) => sum + Math.round(Number(s.price) * 100), 0) / 100;
+  const duration = chosen.reduce((sum, s) => sum + s.duration_min, 0);
+  const selectionKey = chosen.map(s => s.id).join(",");
+  const slots = useResource(signal => day && selectionKey ? getSlots(day, chosen.map(s => s.id), signal) : Promise.resolve({ date: "", duration_min: 0, slots: [] as string[], reason: "" }), [day, selectionKey]);
+  const repeatServices = params.get("servicos");
   useEffect(() => {
-    getServices()
-      .then(setServices)
-      .catch(() => setError("Erro ao carregar serviços."));
-  }, []);
+    if (!repeatServices || !catalog.data) return;
+    const ids = repeatServices.split(",").map(Number);
+    const active = catalog.data.filter(s => s.active && ids.includes(s.id));
+    setSelected(active.some(s => s.price_type === "quote") ? active.filter(s => s.price_type === "quote").slice(0, 1).map(s => s.id) : active.map(s => s.id));
+    setDone(null); setSlot("");
+  }, [repeatServices, catalog.data]);
 
-  const chosen = services.filter((s) => selected.includes(s.id));
-  const total = chosen.reduce((a, s) => a + Number(s.price), 0);
-  const toggle = (id: number) =>
-    setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
-
-  const onDate = async (d: string) => {
-    setDate(d);
-    setSlot(null);
-    if (selected.length === 0) {
-      setError("Escolha um serviço primeiro.");
-      return;
-    }
-    setError("");
-    setLoading(true);
-    try {
-      setSlots((await getSlots(d, selected)).slots);
-    } catch {
-      setError("Erro ao buscar horários.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const confirm = async () => {
-    if (!slot) return;
-    setLoading(true);
-    setError("");
-    try {
-      const b = await createBooking(selected, slot);
-      setDone(b.start);
-      setSelected([]);
-      setDate("");
-      setSlots([]);
-      setSlot(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao agendar.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (done) {
-    return (
-      <div className={styles.success}>
-        <div className={styles.check}>✓</div>
-        <h2 className={styles.successTitle}>Agendado!</h2>
-        <p className={styles.successDate}>
-          {new Date(done).toLocaleString("pt-BR", {
-            weekday: "long",
-            day: "2-digit",
-            month: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </p>
-        <p className={styles.muted}>Falta o sinal de 50% — o Elcio combina contigo. ✂️</p>
-        <button className={styles.cta} onClick={() => setDone(null)}>
-          Agendar outro
-        </button>
-      </div>
-    );
+  function toggle(service: ApiService) {
+    setSlot(""); setError("");
+    setSelected(previous => {
+      if (service.price_type === "quote") return previous.includes(service.id) ? [] : [service.id];
+      const fixed = previous.filter(id => services.find(s => s.id === id)?.price_type !== "quote");
+      return fixed.includes(service.id) ? fixed.filter(id => id !== service.id) : [...fixed, service.id];
+    });
   }
+  async function confirm() {
+    if (!slot || saving || !slots.data?.slots.includes(slot)) return;
+    setSaving(true); setError("");
+    try { setDone(await createBooking(chosen.map(s => s.id), slot, note)); }
+    catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Não foi possível agendar.");
+      setSlot(""); slots.reload();
+    } finally { setSaving(false); }
+  }
+  function reset() { setDone(null); setSelected([]); setDay(""); setSlot(""); setNote(""); setError(""); }
 
-  return (
-    <div className={styles.view}>
-      {error && <p className={styles.error}>{error}</p>}
-
-      <h3 className={styles.step}>1 · Escolha os serviços</h3>
-      <div className={styles.cards}>
-        {services.map((s) => (
-          <button
-            key={s.id}
-            className={`${styles.svc} ${selected.includes(s.id) ? styles.svcOn : ""}`}
-            onClick={() => toggle(s.id)}
-          >
-            <span>
-              {s.name}
-              <small>{s.duration_min} min</small>
-            </span>
-            <b>R$ {Number(s.price).toFixed(0)}</b>
-          </button>
-        ))}
-      </div>
-
-      <h3 className={styles.step}>2 · Escolha o dia</h3>
-      <input
-        className={styles.input}
-        type="date"
-        min={todayStr()}
-        value={date}
-        onChange={(e) => onDate(e.target.value)}
-      />
-
-      {date && (
-        <>
-          <h3 className={styles.step}>3 · Horário</h3>
-          {loading ? (
-            <p className={styles.muted}>Carregando horários…</p>
-          ) : slots.length === 0 ? (
-            <p className={styles.muted}>Sem horários livres nesse dia. Tente outro.</p>
-          ) : (
-            <div className={styles.slots}>
-              {slots.map((s) => (
-                <button
-                  key={s}
-                  className={`${styles.slot} ${slot === s ? styles.slotOn : ""}`}
-                  onClick={() => setSlot(s)}
-                >
-                  {fmtTime(s)}
-                </button>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      <div className={styles.bottom}>
-        <span className={styles.total}>
-          Total: <b>R$ {total.toFixed(0)}</b>
-        </span>
-        <button className={styles.cta} disabled={!slot || loading} onClick={confirm}>
-          Confirmar
-        </button>
-      </div>
+  if (done) return <div className={styles.success} role="status">
+    <span className={styles.check}><Check size={30} /></span>
+    <h2>{done.status === "quote" ? "Avaliação marcada!" : "Horário reservado"}</h2>
+    <p className={styles.successDate}>{appointmentDate(done.start)}</p>
+    <p>{chosen.map(s => s.name).join(" + ")}</p>
+    <p className={styles.muted}>{done.status === "quote" ? "No encontro, o Elcio avalia seu cabelo e combina o valor e a duração do procedimento com você. Depois, aceite o orçamento e escolha outro horário para realizar a arte." : done.hold_expires_at ? `Pague o sinal de ${money(done.deposit_amount ?? depositAmount(done.total_price))} até ${new Date(done.hold_expires_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}. A confirmação aparece nos seus horários.` : `O próximo passo é pagar o sinal de ${money(done.deposit_amount ?? depositAmount(done.total_price))}. A confirmação aparece nos seus horários.`}</p>
+    <div className={styles.bookingActions}>
+      <Link className={styles.cta} to={`/app?aba=historico${done.status === "quote" ? "" : `&pagamento=${done.id}`}`}>{done.status === "quote" ? "Ver meus horários" : "Pagar sinal"}</Link>
+      <button className={styles.secondary} onClick={reset}>Marcar outro</button>
     </div>
-  );
+  </div>;
+
+  return <div className={styles.view}>
+    <div className={styles.viewHeading}><div><h2>Seu próximo cuidado</h2><p>Escolha os serviços e encontre um horário com o Elcio.</p></div><Scissors aria-hidden size={32} /></div>
+    <ol className={styles.progress} aria-label="Etapas do agendamento"><li aria-current={chosen.length ? undefined : "step"}>1. Serviços</li><li aria-current={chosen.length && !slot ? "step" : undefined}>2. Dia e hora</li><li aria-current={slot ? "step" : undefined}>3. Revisão</li></ol>
+    {error && <p className={styles.error} role="alert">{error}</p>}
+    {catalog.loading && <p role="status" className={styles.muted}>Carregando serviços…</p>}
+    {catalog.error && <div className={styles.error} role="alert"><p>{catalog.error}</p><button className={styles.secondary} onClick={catalog.reload}>Tentar novamente</button></div>}
+    {!catalog.loading && !catalog.error && !services.length && <p className={styles.empty}>Ainda não há serviços disponíveis para agendamento.</p>}
+    <fieldset className={styles.bookingFields} disabled={saving}>
+      <legend className={styles.step}>O que você quer fazer?</legend>
+      <div className={styles.svcGridBook}>
+        {services.map(service => <button key={service.id} type="button" aria-pressed={selected.includes(service.id)} className={selected.includes(service.id) ? styles.svcCardOn : styles.svcCardBook} onClick={() => toggle(service)}>
+          <span className={styles.svcCardIcon}>{service.price_type === "quote" ? <Palette size={21} /> : <Scissors size={21} />}</span>
+          <span className={styles.svcCardName}>{service.name}</span>
+          <span className={styles.svcDescription}>{service.description}</span>
+          <span className={styles.svcCardMeta}><b>{service.price_type === "quote" ? "Sob consulta" : money(service.price)}</b><small>{service.price_type === "quote" ? "Avaliação: " : ""}{service.duration_min} min</small></span>
+          {selected.includes(service.id) && <span className={styles.svcCheck}><Check size={14} /></span>}
+        </button>)}
+      </div>
+      {chosen.length > 0 && <>
+        {isQuote && <p className={styles.quoteNote}><Palette size={20} /> Você está marcando uma avaliação. O valor do procedimento será combinado depois, antes de qualquer cobrança.</p>}
+        <h3 className={styles.step}>Escolha o dia</h3>
+        <DatePicker value={day} onChange={value => { setDay(value); setSlot(""); }} />
+        {day && <><h3 className={styles.step}>Escolha o horário <small>Horário de Brasília</small></h3>
+          {slots.loading ? <p className={styles.muted} role="status">Buscando horários…</p> : slots.error ? <div className={styles.error} role="alert"><p>{slots.error}</p><button type="button" className={styles.secondary} onClick={slots.reload}>Tentar novamente</button></div> : !slots.data?.slots.length ? <p className={styles.empty}>{slots.data?.reason || "Sem horário livre nesse dia. Escolha outra data."}</p> : <div className={styles.slots}>{slots.data.slots.map(value => <button type="button" key={value} aria-pressed={slot === value} className={slot === value ? styles.slotOn : styles.slot} onClick={() => setSlot(value)}>{time(value)}</button>)}</div>}
+        </>}
+        {slot && <div className={styles.review}>
+          <h3>Confira seu agendamento</h3>
+          <p>{chosen.map(s => s.name).join(" + ")}</p><p><Clock size={16} /> {appointmentDate(slot)} • {isQuote ? "Duração da avaliação: " : ""}{duration} min</p>
+          <label htmlFor="booking-note">Observações (opcional)</label><textarea id="booking-note" className={styles.noteField} value={note} onChange={e => setNote(e.target.value)} rows={2} maxLength={2000} placeholder={isQuote ? "Conte qual cor ou resultado você procura" : "Alguma preferência para o atendimento?"} />
+          <p className={styles.muted}>Você pode cancelar ou remarcar com pelo menos 24 horas de antecedência.</p>
+        </div>}
+      </>}
+    </fieldset>
+    {chosen.length > 0 && <div className={styles.bottomBar}><div className={styles.total}>{isQuote ? <><span>Avaliação</span><b>Valor sob consulta</b></> : <><span>Total do atendimento</span><b>{money(total)}</b><small>Sinal de 50%: {money(depositAmount(total))}</small><small>Procedimentos ficam retidos por 15 minutos e só são confirmados após o sinal.</small></>}</div><button className={styles.cta} disabled={!slot || saving || slots.loading || !slots.data?.slots.includes(slot)} onClick={() => void confirm()}>{saving ? "Reservando…" : isQuote ? "Pedir avaliação" : "Confirmar"}</button></div>}
+  </div>;
 }

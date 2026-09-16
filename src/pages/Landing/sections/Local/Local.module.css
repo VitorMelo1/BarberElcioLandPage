@@ -82,3 +82,4 @@
   border: 0;
   filter: invert(0.92) hue-rotate(180deg) saturate(0.85);
 }
+.title{font-family:var(--font-display);font-weight:900;line-height:1.15;color:#e5c7fa;overflow-wrap:anywhere;}

@@ -28,10 +28,14 @@ export function register(data: RegisterData) {
   return api("/auth/register/", { method: "POST", body: data });
 }
 
-export function getMe() {
-  return api<MeUser>("/auth/me/");
+export function getMe(signal?: AbortSignal) {
+  return api<MeUser>("/auth/me/", { signal });
 }
 
 export function logout() {
   return api<null>("/auth/logout/", { method: "POST" });
+}
+
+export function updateProfile(data: Pick<MeUser, "email" | "phone">) {
+  return api<MeUser>("/auth/me/", { method: "PATCH", body: data });
 }
