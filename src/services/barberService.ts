@@ -24,6 +24,12 @@ export const getBarberBookings = (date: string) =>
 
 export const getBarberCustomers = () => api<BarberCustomer[]>("/scheduling/barber/customers/");
 
+export const createBarberBooking = (client_id: number, service_ids: number[], start: string, notes = "") =>
+  api<Booking>("/scheduling/barber/bookings/create/", { method: "POST", body: { client_id, service_ids, start, notes } });
+
+export const acceptBarberProposal = (id: number, version: number, start: string, consent_note: string) =>
+  api<Booking>(`/scheduling/barber/proposals/${id}/accept/`, { method: "POST", body: { version, start, consent_note } });
+
 export const completeBarberBooking = (id: number) =>
   api<Booking>(`/scheduling/barber/bookings/${id}/complete/`, { method: "POST" });
 

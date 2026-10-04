@@ -10,6 +10,7 @@ export interface SlotsResponse {
 
 export interface BookingService {
   id: number;
+  slug?: string;
   name: string;
   price: string;
   price_type: "fixed" | "quote";
@@ -57,6 +58,7 @@ export interface Proposal {
   created_at: string;
   accepted_at: string | null;
   accepted_by: number | null;
+  consent_note?: string;
   procedure: number | null;
 }
 

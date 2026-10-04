@@ -69,6 +69,36 @@ test('pending procedures without a paid deposit cannot be manually confirmed',()
   expect(screen.queryByRole('button',{name:'Confirmar horário'})).toBeNull();
 });
 
+test('barber books an existing customer in the contact-only morning after agreement', async () => {
+  const calls: { url: string; body?: Record<string, unknown> }[] = [];
+  document.cookie = 'barder_csrf=test; path=/';
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+    const url = String(input);
+    calls.push({ url, ...(init?.body ? { body: JSON.parse(String(init.body)) } : {}) });
+    if (url.endsWith('/auth/csrf/')) return response({ csrfToken: 'fixture-csrf' });
+    if (url.includes('/calendar/')) return response({ year: 2099, month: 10, days: [] });
+    if (url.includes('/blackouts/')) return response([]);
+    if (url.includes('/bookings/?')) return response([]);
+    if (url.includes('/barber/customers/')) return response([{ id: 7, username: 'Ana', phone: '62999990000', email: 'ana@example.com' }]);
+    if (url.includes('/catalog/services/')) return response([{ id: 35, slug: 'teste-de-mecha', name: 'Teste de mecha', price: '35.00', price_type: 'fixed', duration_min: 30, active: true }]);
+    if (url.includes('/barber/bookings/create/')) return response({ ...booking, id: 30, status: 'pending' }, 201);
+    throw new Error(`Unexpected URL ${url}`);
+  });
+  render(<AgendaCalendar />);
+  await screen.findByText(/Nenhum agendamento/);
+  fireEvent.click(screen.getByRole('button', { name: 'Registrar horário combinado' }));
+  await screen.findByRole('option', { name: /Ana/ });
+  fireEvent.change(screen.getByLabelText('Data combinada'), { target: { value: '2099-10-02' } });
+  fireEvent.change(screen.getByLabelText('Cliente'), { target: { value: '7' } });
+  fireEvent.change(screen.getByLabelText('Serviço'), { target: { value: '35' } });
+  fireEvent.change(screen.getByLabelText('Horário combinado'), { target: { value: '09:00' } });
+  fireEvent.change(screen.getByLabelText('Registro do combinado'), { target: { value: 'Ana confirmou o horário por WhatsApp.' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Registrar reserva' }));
+  await waitFor(() => expect(calls.some(c => c.url.includes('/barber/bookings/create/'))).toBe(true));
+  expect(calls.find(c => c.url.includes('/barber/bookings/create/'))?.body).toEqual({ client_id: 7, service_ids: [35], start: '2099-10-02T09:00:00-03:00', notes: 'Ana confirmou o horário por WhatsApp.' });
+  expect(await screen.findByText(/sinal.*pendente/i)).toBeTruthy();
+});
+
 test('pending evaluations keep their existing manual confirmation flow',()=>{
   render(<BookingCard booking={{...booking,kind:'consultation',deposit_paid:false,status:'pending',start:'2099-10-01T09:00:00-03:00',end:'2099-10-01T10:00:00-03:00'}} onChanged={()=>{}}/>);
   expect(screen.getByRole('button',{name:'Confirmar horário'})).toBeTruthy();

@@ -1,5 +1,6 @@
 import { getServices } from '../../../../services/catalogService';
-import { usePublicCatalog } from '../../usePublicCatalog';
+import { usePublicCatalog, publicMoney } from '../../usePublicCatalog';
+import { depositAmount } from '../../../../utils/format';
 import styles from './Especialidades.module.css';
 
 const arts = [
@@ -12,11 +13,13 @@ export function Especialidades() {
   return <section className={styles.section} id="especialidades" aria-label="Freestyle e Colorimetria">
     <div className={styles.container}>{arts.map(art => {
       const service = items.find(item => item.price_type === 'quote' && item.specialty === art.id);
+      const strandTest = art.id === 'colorimetry' ? items.find(item => item.slug === 'teste-de-mecha' && item.price_type === 'fixed') : undefined;
       return <article className={styles.scene} key={art.id}>
         <figure className={styles.photo}><img src={art.image} alt={art.alt} loading="lazy" width="1050" height="1400" /><figcaption>{art.name} por Elcio</figcaption></figure>
         <div className={styles.copy}><p className={styles.specialty}>{art.name}</p><h2>{art.title}</h2><p>{art.text}</p>
           <p className={styles.process}>Primeiro a avaliação. Depois, uma proposta com valor, duração e o dia do procedimento.</p>
           <a className={styles.primary} aria-label={`Avaliar ${art.name}`} href={service ? `/app?servicos=${service.id}` : `https://wa.me/5562993397680?text=${encodeURIComponent(`Olá! Quero combinar uma avaliação de ${art.name} com o Elcio.`)}`} target={service ? undefined : '_blank'} rel={service ? undefined : 'noreferrer'}>{service ? 'Agendar avaliação' : 'Combinar avaliação pelo WhatsApp'}</a>
+          {strandTest && <p className={styles.strandNote}>Teste de mecha: {publicMoney(strandTest.price)}, com sinal de {publicMoney(depositAmount(strandTest.price))}. É uma reserva separada; o procedimento de cor será orçado depois. <a href={`/app?servicos=${strandTest.id}`} aria-label="Agendar teste de mecha">Agendar teste de mecha</a></p>}
           <a className={styles.secondary} href="#portfolio">Ver os trabalhos</a>
         </div>
       </article>;

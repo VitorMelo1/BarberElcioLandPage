@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useResource } from "../../hooks/useResource";
 import { acceptProposal, declineProposal, getProposalSlots, type Proposal, type SlotsResponse } from "../../services/schedulingService";
 import { appointmentDate, localDate, money, time } from "../../utils/format";
+import { MorningContact, isOnlineSlot } from "./MorningContact";
 import styles from "./ClientApp.module.css";
 
 const STATUS = { accepted: "Orçamento aceito · procedimento reservado", declined: "Orçamento recusado", expired: "Orçamento vencido · peça uma revisão ao studio", superseded: "Versão anterior" };
@@ -19,8 +20,9 @@ export function ProposalPanel({ proposal: p, consultationStatus, onChanged }: { 
     ? "Esta avaliação foi cancelada. O orçamento fica no histórico e não pode ser aceito."
     : "Foi registrada falta nesta avaliação. O orçamento fica no histórico e não pode ser aceito.";
   const slots = useResource<SlotsResponse>(signal => open && day && valid ? getProposalSlots(p.id, day, signal) : Promise.resolve({ date: "", duration_min: p.duration_min, slots: [] as string[] }), [open, day, p.id, p.version, valid]);
+  const onlineSlots = slots.data?.slots.filter(isOnlineSlot) ?? [];
   async function submit(accept: boolean) {
-    if (saving.current || !valid || (accept && (!slot || slots.loading || !slots.data?.slots.includes(slot)))) return;
+    if (saving.current || !valid || (accept && (!slot || slots.loading || !onlineSlots.includes(slot)))) return;
     saving.current = true; setPending(true); setError("");
     try {
       if (accept) await acceptProposal(p.id, p.version, slot);
@@ -45,10 +47,11 @@ export function ProposalPanel({ proposal: p, consultationStatus, onChanged }: { 
     {open && valid && <fieldset className={styles.reBox} disabled={pending}>
       <legend>Agendar o procedimento</legend>
       <label className={styles.dateField}>Data do procedimento<input type="date" className={styles.input} min={localDate()} value={day} onChange={e => { setDay(e.target.value); setSlot(""); }} /></label>
+      <MorningContact subject="o procedimento combinado" day={day} />
       <p className={styles.muted}>Horário de Brasília · {p.duration_min} minutos reservados</p>
       {slots.error && <div className={styles.error} role="alert"><p>{slots.error}</p><button className={styles.secondary} type="button" onClick={slots.reload}>Consultar horários novamente</button></div>}
-      {day && (slots.loading ? <p role="status">Buscando horários para o procedimento…</p> : !slots.error && !slots.data?.slots.length ? <p>{slots.data?.reason || "Sem espaço para o procedimento completo. Escolha outro dia."}</p> : <div className={styles.slots}>{slots.data?.slots.map(value => <button type="button" key={value} className={slot === value ? styles.slotOn : styles.slot} aria-pressed={slot === value} onClick={() => setSlot(value)}>{time(value)}</button>)}</div>)}
-      {slot && <div className={styles.proposalReview}><p><strong>{appointmentDate(slot)} até {time(new Date(Date.parse(slot) + p.duration_min * 60_000).toISOString())}</strong></p><p>Total de {money(p.price)}. Sinal de {money(p.deposit_amount)} após reservar.</p><button className={styles.cta} disabled={pending || slots.loading || !slots.data?.slots.includes(slot)} onClick={() => void submit(true)}>{pending ? "Reservando procedimento…" : "Aceitar e agendar procedimento"}</button></div>}
+      {day && (slots.loading ? <p role="status">Buscando horários para o procedimento…</p> : !slots.error && !onlineSlots.length ? <p>{slots.data?.reason || "Sem espaço online para o procedimento completo. Consulte a manhã pelo WhatsApp ou escolha outro dia."}</p> : <div className={styles.slots}>{onlineSlots.map(value => <button type="button" key={value} className={slot === value ? styles.slotOn : styles.slot} aria-pressed={slot === value} onClick={() => setSlot(value)}>{time(value)}</button>)}</div>)}
+      {slot && <div className={styles.proposalReview}><p><strong>{appointmentDate(slot)} até {time(new Date(Date.parse(slot) + p.duration_min * 60_000).toISOString())}</strong></p><p>Total de {money(p.price)}. Sinal de {money(p.deposit_amount)} após reservar.</p><button className={styles.cta} disabled={pending || slots.loading || !onlineSlots.includes(slot)} onClick={() => void submit(true)}>{pending ? "Reservando procedimento…" : "Aceitar e agendar procedimento"}</button></div>}
     </fieldset>}
   </section>;
 }

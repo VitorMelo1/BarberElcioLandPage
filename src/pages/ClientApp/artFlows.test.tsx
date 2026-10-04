@@ -18,14 +18,16 @@ test('client accepts persisted three-hour proposal into a separate procedure whi
   const procedure = { ...evaluation, id: 9, kind: 'procedure', start: '2099-10-02T14:00:00-03:00', end: '2099-10-02T17:00:00-03:00', duration_min: 180, status: 'pending', total_price: '300.00', source_consultation: 1, proposals: [], deposit_paid: false };
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
     const url = String(input); requests.push({ url, body: init?.body ? JSON.parse(String(init.body)) : undefined });
-    if (url.includes('/proposals/8/slots/')) return json({ date: '2099-10-02', duration_min: 180, slots: [procedure.start] });
+    if (url.includes('/proposals/8/slots/')) return json({ date: '2099-10-02', duration_min: 180, slots: ['2099-10-02T09:00:00-03:00', procedure.start] });
     if (url.endsWith('/proposals/8/accept/')) { accepted = true; return json(procedure, 201); }
     return json(accepted ? [{ ...evaluation, proposals: [{ ...proposal, status: 'accepted', procedure: 9 }] }, procedure] : [evaluation]);
   });
   render(<MemoryRouter><MeusHorariosView /></MemoryRouter>);
   fireEvent.click(await screen.findByRole('button', { name: 'Escolher horário do procedimento' }));
   fireEvent.change(screen.getByLabelText('Data do procedimento'), { target: { value: '2099-10-02' } });
+  expect(screen.getByRole('link', { name: 'Consultar manhã pelo WhatsApp' })).toBeTruthy();
   fireEvent.click(await screen.findByRole('button', { name: '14:00' }));
+  expect(screen.queryByRole('button', { name: '09:00' })).toBeNull();
   expect(screen.getByText(/até 17:00/)).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Aceitar e agendar procedimento' }));
   await screen.findByText('Procedimento reservado. A avaliação permanece no seu histórico.');

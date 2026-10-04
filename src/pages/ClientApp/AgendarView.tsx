@@ -6,6 +6,7 @@ import { getServices, type ApiService } from "../../services/catalogService";
 import { createBooking, getSlots, type Booking } from "../../services/schedulingService";
 import { appointmentDate, depositAmount, money, time } from "../../utils/format";
 import { DatePicker } from "./DatePicker";
+import { MorningContact, isOnlineSlot } from "./MorningContact";
 import styles from "./ClientApp.module.css";
 
 export function AgendarView() {
@@ -25,6 +26,7 @@ export function AgendarView() {
   const duration = chosen.reduce((sum, s) => sum + s.duration_min, 0);
   const selectionKey = chosen.map(s => s.id).join(",");
   const slots = useResource(signal => day && selectionKey ? getSlots(day, chosen.map(s => s.id), signal) : Promise.resolve({ date: "", duration_min: 0, slots: [] as string[], reason: "" }), [day, selectionKey]);
+  const onlineSlots = slots.data?.slots.filter(isOnlineSlot) ?? [];
   const repeatServices = params.get("servicos");
   useEffect(() => {
     if (!repeatServices || !catalog.data) return;
@@ -43,7 +45,7 @@ export function AgendarView() {
     });
   }
   async function confirm() {
-    if (!slot || saving || !slots.data?.slots.includes(slot)) return;
+    if (!slot || saving || !onlineSlots.includes(slot)) return;
     setSaving(true); setError("");
     try { setDone(await createBooking(chosen.map(s => s.id), slot, note)); }
     catch (cause) {
@@ -84,11 +86,12 @@ export function AgendarView() {
         </button>)}
       </div>
       {chosen.length > 0 && <>
-        {isQuote && <p className={styles.quoteNote}><Palette size={20} /> Você está marcando uma avaliação. O valor do procedimento será combinado depois, antes de qualquer cobrança.</p>}
+        {isQuote && <p className={styles.quoteNote}><Palette size={20} /> Você está marcando uma avaliação, separada do procedimento. O valor e a duração da arte serão combinados depois.</p>}
         <h3 className={styles.step}>Escolha o dia</h3>
         <DatePicker value={day} onChange={value => { setDay(value); setSlot(""); }} />
+        <MorningContact subject={chosen.map(s => s.name).join(" + ")} day={day} />
         {day && <><h3 className={styles.step}>Escolha o horário <small>Horário de Brasília</small></h3>
-          {slots.loading ? <p className={styles.muted} role="status">Buscando horários…</p> : slots.error ? <div className={styles.error} role="alert"><p>{slots.error}</p><button type="button" className={styles.secondary} onClick={slots.reload}>Tentar novamente</button></div> : !slots.data?.slots.length ? <p className={styles.empty}>{slots.data?.reason || "Sem horário livre nesse dia. Escolha outra data."}</p> : <div className={styles.slots}>{slots.data.slots.map(value => <button type="button" key={value} aria-pressed={slot === value} className={slot === value ? styles.slotOn : styles.slot} onClick={() => setSlot(value)}>{time(value)}</button>)}</div>}
+          {slots.loading ? <p className={styles.muted} role="status">Buscando horários…</p> : slots.error ? <div className={styles.error} role="alert"><p>{slots.error}</p><button type="button" className={styles.secondary} onClick={slots.reload}>Tentar novamente</button></div> : !onlineSlots.length ? <p className={styles.empty}>{slots.data?.reason || "Sem horário online nesse dia. Você pode consultar a manhã pelo WhatsApp ou escolher outra data."}</p> : <div className={styles.slots}>{onlineSlots.map(value => <button type="button" key={value} aria-pressed={slot === value} className={slot === value ? styles.slotOn : styles.slot} onClick={() => setSlot(value)}>{time(value)}</button>)}</div>}
         </>}
         {slot && <div className={styles.review}>
           <h3>Confira seu agendamento</h3>
@@ -98,6 +101,6 @@ export function AgendarView() {
         </div>}
       </>}
     </fieldset>
-    {chosen.length > 0 && <div className={styles.bottomBar}><div className={styles.total}>{isQuote ? <><span>Avaliação</span><b>Valor sob consulta</b></> : <><span>Total do atendimento</span><b>{money(total)}</b><small>Sinal de 50%: {money(depositAmount(total))}</small><small>Procedimentos ficam retidos por 15 minutos e só são confirmados após o sinal.</small></>}</div><button className={styles.cta} disabled={!slot || saving || slots.loading || !slots.data?.slots.includes(slot)} onClick={() => void confirm()}>{saving ? "Reservando…" : isQuote ? "Pedir avaliação" : "Confirmar"}</button></div>}
+    {chosen.length > 0 && <div className={styles.bottomBar}><div className={styles.total}>{isQuote ? <><span>Avaliação</span><b>Valor sob consulta</b></> : <><span>Total do atendimento</span><b>{money(total)}</b><small>Sinal de 50%: {money(depositAmount(total))}</small><small>Serviços com preço definido ficam retidos por 15 minutos e só são confirmados após o sinal.</small></>}</div><button className={styles.cta} disabled={!slot || saving || slots.loading || !onlineSlots.includes(slot)} onClick={() => void confirm()}>{saving ? "Reservando…" : isQuote ? "Pedir avaliação" : "Confirmar"}</button></div>}
   </div>;
 }

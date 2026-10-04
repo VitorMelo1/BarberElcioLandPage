@@ -3,6 +3,7 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, expect, test, vi } from "vitest";
 import { AgendarView } from "./AgendarView";
 import { MeusHorariosView } from "./MeusHorariosView";
+import { ReschedulePanel } from "./ReschedulePanel";
 
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status });
 const service = { id: 1, name: "Corte", slug: "corte", description: "Acabamento completo", price: "70.50", price_type: "fixed", duration_min: 45, active: true, order: 0, tool: "tesoura" };
@@ -65,7 +66,30 @@ test("deposit estimate uses cents and rounds half a cent up across combined serv
   fireEvent.click(await screen.findByRole("button", { name: /Corte/ }));
   fireEvent.click(screen.getByRole("button", { name: /Barba/ }));
   expect(screen.getByText(/Sinal de 50%: R\$\s*57,62/)).toBeTruthy();
-  expect(screen.getByText(/Procedimentos ficam retidos por 15 minutos e só são confirmados após o sinal/)).toBeTruthy();
+  expect(screen.getByText(/Serviços com preço definido ficam retidos por 15 minutos e só são confirmados após o sinal/)).toBeTruthy();
+});
+
+test("morning availability is arranged on WhatsApp instead of booked online", async () => {
+  vi.spyOn(globalThis, "fetch").mockImplementation(async url => String(url).includes("/catalog/services/")
+    ? json([service])
+    : json({ date: "2099-10-02", duration_min: 45, slots: ["2099-10-02T09:00:00-03:00", "2099-10-02T11:00:00-03:00"] }));
+  render(<MemoryRouter><AgendarView /></MemoryRouter>);
+  fireEvent.click(await screen.findByRole("button", { name: /Corte/ }));
+  fireEvent.click(screen.getByRole("button", { name: /Amanhã/ }));
+  expect(await screen.findByRole("button", { name: "11:00" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "09:00" })).toBeNull();
+  const link = screen.getByRole("link", { name: "Consultar manhã pelo WhatsApp" }) as HTMLAnchorElement;
+  expect(decodeURIComponent(link.href)).toContain("Quero combinar um horário pela manhã");
+  expect(decodeURIComponent(link.href)).toContain("Corte");
+});
+
+test("a client cannot reschedule into the WhatsApp-only morning", async () => {
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(json({ date: "2099-10-02", slots: ["2099-10-02T09:00:00-03:00", "2099-10-02T11:00:00-03:00"] }));
+  render(<MemoryRouter><ReschedulePanel bookingId={9} duration={45} onSaved={() => {}} /></MemoryRouter>);
+  fireEvent.change(screen.getByLabelText("Outra data"), { target: { value: "2099-10-02" } });
+  expect(await screen.findByRole("button", { name: "11:00" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "09:00" })).toBeNull();
+  expect(screen.getByRole("link", { name: "Consultar manhã pelo WhatsApp" })).toBeTruthy();
 });
 
 test("a pending procedure shows the server hold deadline and refreshes when it expires", async () => {

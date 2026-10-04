@@ -2,14 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { Check, RotateCcw, XCircle } from 'lucide-react';
 import type { Booking } from '../../services/schedulingService';
 import { ApiError } from '../../services/api';
-import { cancelBarberBooking, completeBarberBooking, confirmBarberBooking, markBarberNoShow, confirmBarberDeposit, quoteBarberBooking, getBarberRescheduleSlots, rescheduleBarberBooking, getBarberBookings } from '../../services/barberService';
+import { acceptBarberProposal, cancelBarberBooking, completeBarberBooking, confirmBarberBooking, markBarberNoShow, confirmBarberDeposit, quoteBarberBooking, getBarberRescheduleSlots, rescheduleBarberBooking, getBarberBookings } from '../../services/barberService';
 import { appointmentDate } from '../../utils/format';
 import { localDate, timeLabel, money, statusLabel } from './formatters';
 import styles from './BarberApp.module.css';
 
 type BarberBooking = Booking & {deposit_amount?:string};
 export function BookingCard({booking:b, onChanged}: {booking:BarberBooking; onChanged:()=>void}) {
-  const [action,setAction] = useState<'cancel'|'absence'|'move'|'quote'|'deposit'|null>(null);
+  const [action,setAction] = useState<'cancel'|'absence'|'move'|'quote'|'deposit'|'accept'|null>(null);
   const [pending,setPending] = useState(false);
   const [error,setError] = useState('');
   const [reason,setReason] = useState('');
@@ -17,6 +17,9 @@ export function BookingCard({booking:b, onChanged}: {booking:BarberBooking; onCh
   const [notes,setNotes] = useState('');
   const [procedureDuration,setProcedureDuration] = useState('');
   const [expiry,setExpiry] = useState('');
+  const [procedureDate,setProcedureDate] = useState('');
+  const [procedureTime,setProcedureTime] = useState('');
+  const [consentNote,setConsentNote] = useState('');
   const bookedDuration = b.duration_min ?? Math.round((Date.parse(b.end) - Date.parse(b.start)) / 60_000);
   const [duration,setDuration] = useState(String(bookedDuration));
   const [date,setDate] = useState(localDate(new Date(b.start)) < localDate() ? localDate() : localDate(new Date(b.start)));
@@ -31,7 +34,9 @@ export function BookingCard({booking:b, onChanged}: {booking:BarberBooking; onCh
   const saving = useRef(false);
   const consultation = b.kind === 'consultation' || b.status === 'quote';
   const proposal = b.proposals?.[0];
-  const canQuote = consultation && ['quote','completed'].includes(b.status) && !b.proposals?.some(p=>p.status==='accepted');
+  const paidMecha = b.kind === 'procedure' && b.status === 'completed' && b.deposit_paid === true && b.services?.length === 1 && b.services[0].slug === 'teste-de-mecha';
+  const canQuote = (consultation && ['quote','completed'].includes(b.status) || paidMecha) && !b.proposals?.some(p=>p.status==='accepted');
+  const canAccept = canQuote && proposal?.status === 'sent' && Date.parse(proposal.expires_at) > Date.now();
   const terminal = ['completed','cancelled','noshow','no_show'].includes(b.status);
   const now = Date.now();
   const canComplete = (b.status === 'confirmed' || (consultation && b.status === 'quote')) && new Date(b.start).getTime() <= now;
@@ -73,6 +78,7 @@ export function BookingCard({booking:b, onChanged}: {booking:BarberBooking; onCh
   const phoneDigits = (b.client_phone || '').replace(/\D/g, '');
   const whatsappPhone = /^\d{10,11}$/.test(phoneDigits) ? `55${phoneDigits}` : /^55\d{10,11}$/.test(phoneDigits) ? phoneDigits : '';
   const whatsappMessage = latest ? `Olá, ${b.client_username || 'cliente'}! Seu horário no Studio do Bruxo mudou. Antes: ${appointmentDate(latest.old_start)} até ${timeLabel(latest.old_end)}. Agora: ${appointmentDate(latest.new_start)} até ${timeLabel(latest.new_end)} (horário de Brasília). Motivo: ${latest.reason}. Confira seus horários em ${window.location.origin}/app?aba=historico e toque em “Estou ciente” após ver a alteração.` : '';
+  const reminderMessage = `Olá, ${b.client_username || 'cliente'}! Passando para lembrar da sua ${consultation ? 'avaliação' : 'reserva'} no Studio do Bruxo em ${appointmentDate(b.start)} (horário de Brasília). Até lá!`;
   function prepareProposal() { setPrice(proposal?.price || ''); setProcedureDuration(proposal ? String(proposal.duration_min) : ''); setNotes(proposal?.notes || ''); setExpiry(''); setAction('quote'); setError(''); }
   return <article className={b.status === 'quote' ? styles.bookingCardQuote : styles.bookingCard} aria-busy={pending}>
     <div className={styles.bookingTime}><strong>{timeLabel(b.start)}</strong><span>até {timeLabel(b.end)}</span></div>
@@ -92,8 +98,9 @@ export function BookingCard({booking:b, onChanged}: {booking:BarberBooking; onCh
       <p>Antes: {appointmentDate(latest.old_start)} até {timeLabel(latest.old_end)}</p><p>Agora: {appointmentDate(latest.new_start)} até {timeLabel(latest.new_end)}</p><p>Motivo: {latest.reason}</p>
       {whatsappPhone ? <><a className={styles.btnGhost} href={`https://wa.me/${whatsappPhone}?text=${encodeURIComponent(whatsappMessage)}`} target="_blank" rel="noreferrer">Abrir aviso no WhatsApp</a><small>A mensagem precisa ser enviada por você no WhatsApp. Abrir o aviso não comprova envio ou leitura.</small></> : <p>Cliente sem WhatsApp válido no cadastro. Combine a mudança por outro contato.</p>}
     </div>}
-    {proposal && <div className={styles.proposalSummary}><strong>Orçamento v{proposal.version}: {money(proposal.price)} · {proposal.duration_min} min</strong><p>{({sent:'Aguardando aceite e escolha de horário pelo cliente',accepted:'Aceito · procedimento reservado separadamente',declined:'Cliente recusou o orçamento',expired:'Orçamento vencido',superseded:'Versão anterior'})[proposal.status]}</p><p>Validade: {appointmentDate(proposal.expires_at)}</p>{proposal.notes && <p>{proposal.notes}</p>}</div>}
+    {proposal && <div className={styles.proposalSummary}><strong>Orçamento v{proposal.version}: {money(proposal.price)} · {proposal.duration_min} min</strong><p>{({sent:'Aguardando aceite e escolha de horário pelo cliente',accepted:'Aceito · procedimento reservado separadamente',declined:'Cliente recusou o orçamento',expired:'Orçamento vencido',superseded:'Versão anterior'})[proposal.status]}</p><p>Validade: {appointmentDate(proposal.expires_at)}</p>{proposal.notes && <p>{proposal.notes}</p>}{proposal.consent_note && <p>Acordo registrado: {proposal.consent_note}</p>}</div>}
     {canQuote && <div className={styles.bookingActions}><button className={styles.btnSmall} disabled={pending} onClick={prepareProposal}>{proposal ? 'Revisar orçamento' : 'Preparar orçamento'}</button></div>}
+    {canAccept && <div className={styles.bookingActions}><button className={styles.btnGhost} disabled={pending} onClick={()=>{setAction('accept');setError('');setConsentNote('');setProcedureDate('');setProcedureTime('');}}>Registrar aceite combinado</button></div>}
     {!terminal && <div className={styles.bookingActions}>
       {canConfirm && <button className={styles.btnSmall} disabled={pending} onClick={()=>void run(()=>confirmBarberBooking(b.id))}>Confirmar horário</button>}
       {canComplete && <button className={styles.btnSmall} disabled={pending} onClick={()=>void run(()=>completeBarberBooking(b.id))}><Check size={16}/> {consultation ? 'Avaliação realizada' : 'Finalizar'}</button>}
@@ -102,6 +109,7 @@ export function BookingCard({booking:b, onChanged}: {booking:BarberBooking; onCh
       {canNoShow && <button className={styles.btnGhost} disabled={pending} onClick={()=>setAction('absence')}>Registrar falta</button>}
       <button className={styles.btnDanger} disabled={pending} onClick={()=>{setReason('');setAction('cancel');}}><XCircle size={16}/> Cancelar</button>
     </div>}
+    {!terminal && ['quote','scheduled','confirmed'].includes(b.status) && new Date(b.start).getTime() > now && whatsappPhone && <div className={styles.reminderContact}><a className={styles.btnGhost} href={`https://wa.me/${whatsappPhone}?text=${encodeURIComponent(reminderMessage)}`} target="_blank" rel="noreferrer">Preparar lembrete no WhatsApp</a><small>Envie você mesmo cerca de 1 hora antes. Abrir a mensagem não a envia automaticamente.</small></div>}
     {canConfirm && <p className={styles.actionHint}>Confirmar horário aprova a reserva elegível. Procedimentos exigem sinal registrado.</p>}
     {error && <div className={styles.toastErr} role="alert"><p>{error}</p>{conflicts.length > 0 && <><strong>Atendimentos no intervalo solicitado:</strong><ul>{conflicts.map(c=><li key={c.booking}>{c.client_name}: {appointmentDate(c.start)} até {timeLabel(c.end)}</li>)}</ul><p>Escolha outro início ou ajuste a duração. A reserva anterior foi mantida.</p></>}</div>}
     {action === 'cancel' && <form className={styles.inlineAction} onSubmit={e=>{e.preventDefault();void run(()=>cancelBarberBooking(b.id,reason));}}>
@@ -127,7 +135,7 @@ export function BookingCard({booking:b, onChanged}: {booking:BarberBooking; onCh
     </form>}
     {action === 'quote' && <form className={styles.inlineAction} onSubmit={e=>{e.preventDefault();if(Number.isInteger(Number(procedureDuration)) && Number(procedureDuration)>=5 && Number(procedureDuration)<=480) void run(()=>quoteBarberBooking(b.id,price,notes,Number(procedureDuration),expiry ? `${expiry}T23:59:59-03:00` : undefined));}}>
       <h4>{proposal ? 'Revisar orçamento do procedimento' : 'Preparar orçamento do procedimento'}</h4>
-      <p>A avaliação mantém seu horário e suas observações. O cliente aceitará este orçamento e escolherá uma nova reserva.</p>
+      <p>{paidMecha ? 'O teste de mecha mantém seu valor de R$ 35 e seu próprio horário. O procedimento terá preço e duração combinados separadamente.' : 'A avaliação mantém seu horário e suas observações. O cliente aceitará este orçamento e escolherá uma nova reserva.'}</p>
       <label className={styles.fieldLabel}>Valor combinado (R$)<input required type="number" min="0.01" step="0.01" value={price} onChange={e=>setPrice(e.target.value)}/></label>
       <label className={styles.fieldLabel}>Duração do procedimento (minutos)<input required type="number" min="5" max="480" step="1" value={procedureDuration} onChange={e=>setProcedureDuration(e.target.value)}/></label>
       <p className={styles.actionHint}>Inclua preparo, aplicação e finalização: todo esse período ficará reservado para este cliente.</p>
@@ -135,6 +143,15 @@ export function BookingCard({booking:b, onChanged}: {booking:BarberBooking; onCh
       <label className={styles.fieldLabel}>Válido até (opcional)<input type="date" min={localDate()} value={expiry} onChange={e=>setExpiry(e.target.value)}/></label>
       <p className={styles.actionHint}>Sem data escolhida, o orçamento vale por 14 dias. Disponibilizar aqui não envia uma mensagem no WhatsApp.</p>
       <div className={styles.pairActions}><button disabled={pending} className={styles.btn}>{pending?'Salvando…':'Disponibilizar orçamento'}</button><button type="button" disabled={pending} className={styles.btnGhost} onClick={()=>setAction(null)}>Voltar</button></div>
+    </form>}
+    {action === 'accept' && proposal && <form className={styles.inlineAction} onSubmit={e=>{e.preventDefault();if(procedureDate && procedureTime && consentNote.trim()) void run(()=>acceptBarberProposal(proposal.id,proposal.version,`${procedureDate}T${procedureTime}:00-03:00`,consentNote.trim()));}}>
+      <h4>Registrar aceite combinado</h4>
+      <p>Registre somente se o cliente confirmou preço, duração e horário. O procedimento aguardará sinal de {money(proposal.deposit_amount)} por até 15 minutos; depois disso o horário pode ser liberado.</p>
+      <label className={styles.fieldLabel}>Data do procedimento<input required type="date" min={localDate(new Date(Math.max(Date.now(),Date.parse(b.end))))} value={procedureDate} onChange={e=>setProcedureDate(e.target.value)} disabled={pending}/></label>
+      <label className={styles.fieldLabel}>Horário do procedimento<input required type="time" value={procedureTime} onChange={e=>setProcedureTime(e.target.value)} disabled={pending}/></label>
+      <label className={styles.fieldLabel}>Como o cliente aceitou<textarea required rows={2} maxLength={240} value={consentNote} onChange={e=>setConsentNote(e.target.value)} placeholder="Ex.: cliente confirmou pelo WhatsApp em 16/09" disabled={pending}/></label>
+      <p className={styles.actionHint}>O procedimento precisa caber integralmente na agenda. Este registro não envia mensagem nem cobra o sinal.</p>
+      <div className={styles.pairActions}><button className={styles.btn} disabled={pending||!procedureDate||!procedureTime||!consentNote.trim()}>{pending?'Reservando…':'Reservar procedimento combinado'}</button><button type="button" className={styles.btnGhost} disabled={pending} onClick={()=>setAction(null)}>Voltar</button></div>
     </form>}
     {action === 'deposit' && <form className={styles.inlineAction} onSubmit={e=>{e.preventDefault();void run(()=>confirmBarberDeposit(b.id,expectedDeposit,reason));}}>
       <h4>Registrar sinal de {money(expectedDeposit)}</h4><p>Confira o recebimento na sua conta antes de registrar. Este registro não efetua cobrança.</p>

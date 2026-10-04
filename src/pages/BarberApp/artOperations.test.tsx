@@ -57,6 +57,14 @@ test('barber sees pending acknowledgement and a correctly addressed WhatsApp dra
   expect(screen.getByText(/A mensagem precisa ser enviada por você/)).toBeTruthy();
 });
 
+test('barber can prepare a reminder for a future booking without implying it was sent', () => {
+  render(<BookingCard booking={{ ...booking, kind: 'procedure', status: 'confirmed', start: '2099-10-02T14:00:00-03:00', end: '2099-10-02T15:00:00-03:00' }} onChanged={() => {}} />);
+  const link = screen.getByRole('link', { name: 'Preparar lembrete no WhatsApp' }) as HTMLAnchorElement;
+  expect(link.href).toContain('https://wa.me/5562999990000?text=');
+  expect(decodeURIComponent(link.href)).toContain('14:00');
+  expect(screen.getByText(/Envie você mesmo cerca de 1 hora antes/)).toBeTruthy();
+});
+
 test('a requested longer interval exposes the existing client conflict before saving', async () => {
   vi.spyOn(globalThis, 'fetch').mockImplementation(async input => String(input).includes('/barber/bookings/?')
     ? json([{ ...booking, id: 7, kind: 'procedure', client_username: 'Bruno', status: 'confirmed', start: '2099-10-02T15:00:00-03:00', end: '2099-10-02T16:00:00-03:00' }])
@@ -85,4 +93,30 @@ test('evaluation absence uses its own deliberate action without payment', async 
 test('barber can distinguish original agreement from the adjusted calendar duration', () => {
   render(<BookingCard booking={{ ...booking, kind: 'procedure', status: 'confirmed', duration_min: 240, agreed_duration_min: 180 }} onChanged={() => {}} />);
   expect(screen.getByText('Tempo acordado no orçamento: 180 min. Reserva atual: 240 min.')).toBeTruthy();
+});
+
+test('completed paid strand test can receive a separate procedure quote', () => {
+  render(<BookingCard booking={{ ...booking, kind: 'procedure', status: 'completed', deposit_paid: true, services: [{ id: 35, slug: 'teste-de-mecha', name: 'Teste de mecha', price: '35.00', price_type: 'fixed', duration_min: 30 }] }} onChanged={() => {}} />);
+  expect(screen.getByRole('button', { name: 'Preparar orçamento' })).toBeTruthy();
+});
+
+test('barber records a separately agreed proposal only with a consent note', async () => {
+  const calls: { url: string; body: Record<string, unknown> }[] = [];
+  document.cookie = 'barder_csrf=test; path=/';
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+    calls.push({ url: String(input), body: JSON.parse(String(init?.body)) });
+    return json({ ...booking, status: 'pending' }, 201);
+  });
+  const proposal = { id: 20, consultation: 1, version: 2, price: '300.00', deposit_amount: '150.00', duration_min: 180, notes: '', expires_at: '2099-10-01T00:00:00-03:00', owner: 2, status: 'sent' as const, created_at: '2026-09-01T00:00:00-03:00', accepted_at: null, accepted_by: null, procedure: null };
+  const changed = vi.fn();
+  render(<BookingCard booking={{ ...booking, status: 'completed', proposals: [proposal] }} onChanged={changed} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Registrar aceite combinado' }));
+  const submit = screen.getByRole('button', { name: 'Reservar procedimento combinado' }) as HTMLButtonElement;
+  expect(submit.disabled).toBe(true);
+  fireEvent.change(screen.getByLabelText('Data do procedimento'), { target: { value: '2099-10-02' } });
+  fireEvent.change(screen.getByLabelText('Horário do procedimento'), { target: { value: '09:00' } });
+  fireEvent.change(screen.getByLabelText('Como o cliente aceitou'), { target: { value: 'Cliente confirmou preço e horário no WhatsApp em 16/09.' } });
+  fireEvent.click(submit);
+  await waitFor(() => expect(changed).toHaveBeenCalledOnce());
+  expect(calls[0]).toEqual({ url: expect.stringContaining('/scheduling/barber/proposals/20/accept/'), body: { version: 2, start: '2099-10-02T09:00:00-03:00', consent_note: 'Cliente confirmou preço e horário no WhatsApp em 16/09.' } });
 });

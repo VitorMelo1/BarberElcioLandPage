@@ -14,6 +14,16 @@ test('art evaluation CTA uses published quote specialty even when service has a 
   await waitFor(() => expect(screen.getByRole('link', { name: 'Avaliar Colorimetria' }).getAttribute('href')).toBe('/app?servicos=17'));
   expect(decodeURIComponent(screen.getByRole('link', { name: 'Avaliar Freestyle' }).getAttribute('href') || '')).toContain('https://wa.me/5562993397680?text=Olá! Quero combinar uma avaliação de Freestyle com o Elcio.');
 });
+test('published strand test is a separately bookable fixed-price service', async () => {
+  fixture([
+    { id: 17, slug: 'avaliacao-colorimetria', name: 'Avaliação de Colorimetria', price_type: 'quote', specialty: 'colorimetry', price: '0.00', duration_min: 45, description: '', active: true },
+    { id: 18, slug: 'teste-de-mecha', name: 'Teste de mecha', price_type: 'fixed', specialty: 'colorimetry', price: '35.00', duration_min: 30, description: '', active: true },
+  ]);
+  const link = await screen.findByRole('link', { name: 'Agendar teste de mecha' });
+  expect(link.getAttribute('href')).toBe('/app?servicos=18');
+  expect(screen.getByText(/Teste de mecha: R\$\s*35,00/)).toBeTruthy();
+  expect(screen.getByText(/sinal de R\$\s*17,50/)).toBeTruthy();
+});
 test('unavailable catalog keeps art visible but does not fabricate a bookable specialty', async () => {
   fixture([], true);
   expect(decodeURIComponent((await screen.findByRole('link', { name: 'Avaliar Colorimetria' })).getAttribute('href') || '')).toContain('https://wa.me/5562993397680?text=Olá! Quero combinar uma avaliação de Colorimetria com o Elcio.');
