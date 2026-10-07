@@ -74,8 +74,9 @@ export function Hero() {
         ref={video}
         aria-hidden="true"
         tabIndex={-1}
-        preload="none"
+        preload="metadata"
         autoPlay={!reduced}
+        onCanPlay={() => { if (!reduced && video.current?.paused) void video.current.play().catch(() => setPaused(true)); }}
         onPlay={()=>setPaused(false)}
         onPause={()=>setPaused(true)}
         muted
@@ -88,6 +89,7 @@ export function Hero() {
       </video>
 
       <div className={styles.overlay} aria-hidden />
+      <span className={styles.videoBadge}>Vídeo real do trabalho</span>
 
       <div className={styles.content}>
         <img

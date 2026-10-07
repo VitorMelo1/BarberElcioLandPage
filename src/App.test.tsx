@@ -414,7 +414,7 @@ describe("App routes", () => {
     expect(await screen.findByText("Corte")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Planos" }));
-    expect(await screen.findByText(/Consulte os planos do studio/)).toBeTruthy();
+    expect(await screen.findByText(/Assine e pague por PIX/)).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Meus horários" }));
     expect(await screen.findByText(/Confirmado/)).toBeTruthy();
@@ -428,16 +428,16 @@ describe("App routes", () => {
     fireEvent.click(await screen.findByText("Corte"));
     fireEvent.click(await screen.findByRole("button", { name: /Hoje/ }));
     fireEvent.click(await screen.findByRole("button", { name: "14:00" }));
-    fireEvent.click(screen.getByRole("button", { name: /Confirmar/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Reservar e gerar PIX/ }));
     expect(await screen.findByText("Horário reservado")).toBeTruthy();
 
-    // Colorimetria = avaliação (sob consulta, botão "Pedir avaliação")
+    // Colorimetria = avaliação separada do procedimento
     fireEvent.click(screen.getByRole("button", { name: "Marcar outro" }));
     fireEvent.click(await screen.findByText("Colorimetria"));
     expect(await screen.findByText(/Você está marcando uma avaliação/)).toBeTruthy();
     fireEvent.click(await screen.findByRole("button", { name: /Hoje/ }));
     fireEvent.click(await screen.findByRole("button", { name: "14:00" }));
-    fireEvent.click(screen.getByRole("button", { name: /Pedir avaliação/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Agendar avaliação/ }));
     expect(await screen.findByText("Avaliação marcada!")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Marcar outro" }));

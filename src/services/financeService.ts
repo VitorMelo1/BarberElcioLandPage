@@ -60,6 +60,30 @@ export interface PaymentStatus {
   payment_status: string | null;
 }
 
+export interface PlanSubscription {
+  id: number;
+  plan: number;
+  plan_name: string;
+  plan_items: string;
+  amount: string;
+  status: "pending" | "active" | "expired" | "cancelled" | "review";
+  starts_at: string | null;
+  ends_at: string | null;
+  created_at?: string;
+}
+
+export interface PlanPurchase {
+  subscription: PlanSubscription;
+  auto: boolean;
+  amount: string;
+  brcode: string;
+  qr_code_base64?: string;
+  payment_status: string;
+  expires_at?: string | null;
+  requires_review?: boolean;
+  external_reference: string;
+}
+
 export const getFinanceSummary = (year: number, month: number) =>
   api<FinanceSummary>(`/finance/summary/?year=${year}&month=${month}`);
 
@@ -89,3 +113,12 @@ export const getBookingPix = (bookingId: number, signal?: AbortSignal) =>
 
 export const getBookingPaymentStatus = (bookingId: number, signal?: AbortSignal) =>
   api<PaymentStatus>(`/finance/bookings/${bookingId}/payment-status/`, { method: "POST", signal });
+
+export const getPlanSubscriptions = () =>
+  api<PlanSubscription[]>("/finance/plan-subscriptions/");
+
+export const subscribePlan = (planId: number) =>
+  api<PlanPurchase>(`/finance/plans/${planId}/subscribe/`, { method: "POST" });
+
+export const getPlanPaymentStatus = (subscriptionId: number, signal?: AbortSignal) =>
+  api<PlanPurchase>(`/finance/plan-subscriptions/${subscriptionId}/payment-status/`, { method: "POST", signal });

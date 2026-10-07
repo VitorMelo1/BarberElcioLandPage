@@ -69,6 +69,33 @@ test("deposit estimate uses cents and rounds half a cent up across combined serv
   expect(screen.getByText(/Serviços com preço definido ficam retidos por 15 minutos e só são confirmados após o sinal/)).toBeTruthy();
 });
 
+test("booking skips the redundant review step and starts payment after reserving", async () => {
+  document.cookie = "barder_csrf=test-token; path=/";
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
+    const path = String(url);
+    if (path.includes("/catalog/services/")) return json([service]);
+    if (path.includes("/scheduling/slots/")) return json({ slots: ["2099-10-02T14:00:00-03:00"] });
+    if (path.includes("/scheduling/bookings/create/") && init?.method === "POST") return json({
+      id: 12, start: "2099-10-02T14:00:00-03:00", end: "2099-10-02T14:45:00-03:00",
+      status: "pending", total_price: "70.50", deposit_amount: "35.25", services: [service],
+      hold_expires_at: "2099-10-02T14:15:00-03:00", hold_expires_in_seconds: 900,
+    }, 201);
+    if (path.endsWith("/finance/bookings/12/pix/")) return json({ auto: true, brcode: "PIX-12", amount: "35.25", expires_at: "2099-10-02T14:30:00-03:00" });
+    return json([]);
+  });
+  render(<MemoryRouter><AgendarView /></MemoryRouter>);
+  fireEvent.click(await screen.findByRole("button", { name: /Corte/ }));
+  fireEvent.click(screen.getByRole("button", { name: /Amanhã/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "14:00" }));
+
+  expect(screen.queryByText("3. Revisão")).toBeNull();
+  expect(screen.queryByText("Confira seu agendamento")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Reservar e gerar PIX" }));
+
+  expect(await screen.findByText("PIX-12")).toBeTruthy();
+  expect(screen.getByText(/Horário reservado/)).toBeTruthy();
+});
+
 test("morning availability is arranged on WhatsApp instead of booked online", async () => {
   vi.spyOn(globalThis, "fetch").mockImplementation(async url => String(url).includes("/catalog/services/")
     ? json([service])

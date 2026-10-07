@@ -17,6 +17,14 @@ export interface BarberCustomer {
       discount_percent: string;
     } | null;
   };
+  plans?: Array<{
+    id: number;
+    name: string;
+    items: string;
+    amount: string;
+    status: "pending" | "active" | "review";
+    ends_at: string | null;
+  }>;
 }
 
 export const getBarberBookings = (date: string) =>
